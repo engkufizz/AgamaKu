@@ -1,0 +1,40 @@
+# ==============================================================================
+# AgamaKu - .windsurfignore
+# Tells Windsurf AI what directories and files to completely ignore during indexing
+# ==============================================================================
+
+# 📦 Dependencies
+node_modules/
+
+# 🏗️ Build Outputs & Caches
+dist/
+build/
+out/
+.next/
+.cache/
+.parcel-cache/
+
+# 📜 System, Logs & Databases
+*.log
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+Thumbs.db
+
+# 🔒 Secrets & Environment
+.env
+.env*
+*.pem
+*.key
+
+# 🤖 AI Agent Logs, Memory & Cache State Directories
+.gemini/
+.antigravity/
+brain/
+scratch/
+.system_generated/
+.aider.tags.cache
+.aider.chat.history.md
+.cline/
+.roo-cline/

@@ -1,0 +1,84 @@
+# ==============================================================================
+# AgamaKu - Standard .gitignore
+# Designed for clean Git history and seamless AI Agent context management
+# ==============================================================================
+
+# 📦 Dependencies & Packages
+node_modules/
+jspm_packages/
+web_modules/
+.npm/
+.yarn/
+.pnpm/
+
+# 🏗️ Build & Output Directories
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.turbo/
+
+# 📜 Logs & Local Databases
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+*.db
+*.sqlite
+*.sqlite3
+
+# 🛠️ Editor & IDE Configuration Files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# 🖥️ System & OS Metadata
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# 🔒 Secrets, Credentials & Local Environments
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+*.cert
+*.pfx
+
+# 🤖 AI Agent Runtimes, Memory, Caches & Workspace Logs
+# Prevents AI sessions from reading history logs or getting confused by previous run metadata
+.gemini/
+.antigravity/
+brain/
+scratch/
+.system_generated/
+.aider.tags.cache
+.aider.chat.history.md
+.aider.conf
+.cline/
+.roo-cline/
+.copilot/
+.chat/
