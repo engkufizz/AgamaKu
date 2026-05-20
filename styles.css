@@ -507,6 +507,7 @@ body {
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-premium);
+  flex-shrink: 0;
 }
 
 .promo-banner::after {
