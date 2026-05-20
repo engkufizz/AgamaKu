@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgamaKu - Aplikasi Tempahan Ustaz & Ustazah Mudah Alih</title>
+  <meta name="description" content="Tempah perkhidmatan Ustaz dan Ustazah bertauliah untuk Mengaji, Tadabbur, Ceramah, Doa Selamat, dan Ruqyah terus ke rumah anda dengan AgamaKu.">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Remix Icons for gorgeous crisp modern iconography -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- 
+    Desktop Showcase Presentation Container
+    On mobile screens, the .showcase-pane is hidden, and the .emulator-pane fills 100% of the screen.
+  -->
+  <div class="showcase-container">
+    
+    <!-- Left Side: Interactive Phone Emulator -->
+    <div class="emulator-pane">
+      <div class="phone-emulator">
+        <div class="phone-notch-elements">
+          <div class="notch-speaker"></div>
+          <div class="notch-camera"></div>
+        </div>
+        
+        <div class="screen-shell">
+          <!-- Live Status Bar -->
+          <div class="phone-status-bar">
+            <span id="live-clock">16:45</span>
+            <div class="status-bar-icons">
+              <i class="ri-signal-tower-fill"></i>
+              <i class="ri-wifi-fill"></i>
+              <i class="ri-battery-2-charge-fill" style="color: var(--color-primary-light);"></i>
+            </div>
+          </div>
+
+          <!-- Toast Notifications -->
+          <div id="app-toast" class="toast-notification">
+            <i class="ri-checkbox-circle-fill toast-icon" id="toast-icon"></i>
+            <div class="toast-content" id="toast-message">Mesej pemberitahuan...</div>
+          </div>
+
+          <!-- Main View Holder -->
+          <div class="view-container">
+
+            <!-- 1. USER HOME VIEW -->
+            <div id="home-view" class="view active">
+              <div class="app-header">
+                <div class="user-profile-header">
+                  <div class="header-avatar" id="home-avatar">🧑</div>
+                  <div class="user-info">
+                    <span class="user-greeting">Assalamualaikum,</span>
+                    <span class="user-name" id="home-user-name">Tengku Adrian</span>
+                  </div>
+                </div>
+                <div class="wallet-badge" onclick="navigateTo('wallet-view')">
+                  <i class="ri-wallet-3-fill" style="color: var(--color-gold);"></i>
+                  <span class="wallet-amount" id="home-wallet-amount">RM 150.00</span>
+                </div>
+              </div>
+
+              <div class="home-scroll-area">
+                <!-- Promo banner -->
+                <div class="promo-banner">
+                  <div class="promo-title">Tadabbur Bersama</div>
+                  <div class="promo-desc">Tempah sesi tadabbur peribadi minggu ini & nikmati ketenangan hati di rumah anda.</div>
+                  <button class="promo-btn" onclick="openBooking('tadabbur')">Mulakan Sekarang</button>
+                </div>
+
+                <!-- Categories Grid -->
+                <div class="section-title">
+                  <span>Kategori Perkhidmatan</span>
+                </div>
+                <div class="category-grid">
+                  <div class="category-card" onclick="openBooking('mengaji')">
+                    <div class="category-icon-wrapper" style="color: #0d9488;">📖</div>
+                    <span class="category-name">Mengaji & Tajwid</span>
+                  </div>
+                  <div class="category-card" onclick="openBooking('tadabbur')">
+                    <div class="category-icon-wrapper" style="color: #d97706;">💡</div>
+                    <span class="category-name">Tadabbur Quran</span>
+                  </div>
+                  <div class="category-card" onclick="openBooking('ceramah')">
+                    <div class="category-icon-wrapper" style="color: #2563eb;">🗣️</div>
+                    <span class="category-name">Ceramah & Tazkirah</span>
+                  </div>
+                  <div class="category-card" onclick="openBooking('tahlil')">
+                    <div class="category-icon-wrapper" style="color: #059669;">🤲</div>
+                    <span class="category-name">Tahlil & Doa</span>
+                  </div>
+                  <div class="category-card" onclick="openBooking('ruqyah')">
+                    <div class="category-icon-wrapper" style="color: #8b5cf6;">✨</div>
+                    <span class="category-name">Ruqyah & Syifa</span>
+                  </div>
+                </div>
+
+                <!-- Featured Ustaz / Ustazah list -->
+                <div class="section-title">
+                  <span>Ustaz & Ustazah Terdekat</span>
+                  <span class="section-link" onclick="showToast('Memaparkan senarai penuh rakan kongsi bertauliah')">Lihat Semua</span>
+                </div>
+                <div class="featured-teachers-list" id="featured-teachers-container">
+                  <!-- Generated dynamically in app.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. BOOKING VIEW -->
+            <div id="booking-view" class="view">
+              <div class="view-header">
+                <div class="back-btn" onclick="navigateTo('home-view')">
+                  <i class="ri-arrow-left-s-line"></i>
+                </div>
+                <span class="view-title">Tempahan Kelas</span>
+              </div>
+              <div class="booking-form-area">
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-book-open-fill"></i> Jenis Servis</span>
+                  <div class="form-input-wrapper">
+                    <select class="form-select" id="booking-service-select" onchange="calculateBookingPrice()">
+                      <!-- Generated dynamically in app.js -->
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-calendar-event-fill"></i> Tarikh & Masa</span>
+                  <div class="form-input-wrapper">
+                    <i class="ri-calendar-2-fill form-input-icon"></i>
+                    <input type="datetime-local" class="form-input" id="booking-datetime" onchange="calculateBookingPrice()">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-time-fill"></i> Durasi Pembelajaran</span>
+                  <div class="toggle-group" id="booking-duration-toggle">
+                    <div class="toggle-option active" data-hours="1" onclick="selectDuration(this)">1 Jam</div>
+                    <div class="toggle-option" data-hours="1.5" onclick="selectDuration(this)">1.5 Jam</div>
+                    <div class="toggle-option" data-hours="2" onclick="selectDuration(this)">2 Jam</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-parent-fill"></i> Pilihan Gender Guru</span>
+                  <div class="toggle-group" id="booking-gender-toggle">
+                    <div class="toggle-option active" data-gender="any" onclick="selectGenderPref(this)">Bebas</div>
+                    <div class="toggle-option" data-gender="ustaz" onclick="selectGenderPref(this)">Ustaz</div>
+                    <div class="toggle-option" data-gender="ustazah" onclick="selectGenderPref(this)">Ustazah</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-map-pin-2-fill"></i> Alamat Pembelajaran</span>
+                  <div class="form-input-wrapper">
+                    <i class="ri-home-4-fill form-input-icon"></i>
+                    <input type="text" class="form-input" id="booking-address" value="No. 12, Jalan Ampang Hilir, Kuala Lumpur" placeholder="Masukkan alamat lengkap">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-message-3-fill"></i> Catatan Khas (Untuk Guru)</span>
+                  <textarea class="form-textarea" id="booking-notes" placeholder="Contoh: Ajar mengaji asas Iqra untuk anak 7 tahun, mohon bawa buku rujukan."></textarea>
+                </div>
+
+                <div class="booking-summary-box" style="background: var(--color-bg-panel); border: var(--border-glow); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                  <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-size:11px; color:var(--color-text-secondary);">Anggaran Yuran Pembelajaran</span>
+                    <span id="booking-estimated-price" style="font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--color-gold);">RM 35.00</span>
+                  </div>
+                  <span style="font-size:10px; background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.2); padding:4px 8px; border-radius:6px; color:var(--color-gold-light); font-weight:600;">AgamaKu Pay</span>
+                </div>
+
+                <button class="btn-primary" style="margin-top: 10px;" onclick="startBookingSearch()"><i class="ri-search-eye-line"></i> Cari Guru Sekarang</button>
+              </div>
+            </div>
+
+            <!-- 3. MATCHING RADAR VIEW -->
+            <div id="matching-view" class="view">
+              <div class="radar-view">
+                <div class="radar-map-container">
+                  <div class="radar-pulse-ring"></div>
+                  <div class="radar-pulse-ring"></div>
+                  <div class="radar-pulse-ring"></div>
+                  <div class="radar-center-avatar" id="radar-icon">📖</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <span class="searching-label" id="matching-status-title">Mencari Ustaz...</span>
+                  <span class="searching-subtext">Sistem sedang memadankan lokasi anda dengan Ustaz/Ustazah bertauliah terdekat.</span>
+                </div>
+                <button class="btn-reject" style="width: 100%; max-width: 240px; margin-top: 20px;" onclick="cancelBookingSearch()">Batalkan Pencarian</button>
+              </div>
+            </div>
+
+            <!-- 4. LIVE MAP TRACKING VIEW -->
+            <div id="active-job-view" class="view">
+              <div class="view-header">
+                <span class="view-title" id="active-job-header-title">Perjalanan Ustaz</span>
+              </div>
+              <div class="map-tracker-view">
+                <div class="map-wrapper">
+                  <canvas id="mapCanvas" class="map-canvas"></canvas>
+                </div>
+
+                <!-- Floating overlay card detailing Ustaz stats & state -->
+                <div class="floating-overlay-card">
+                  <div class="floating-status-header">
+                    <span class="status-badge-live" id="active-job-status-badge"><i class="ri-focus-3-line"></i> Sedang Menuju Ke Alamat</span>
+                    <span class="status-eta" id="active-job-eta">ETA: 4 min</span>
+                  </div>
+
+                  <div class="driver-detail-row">
+                    <div class="driver-avatar" id="active-job-teacher-avatar">👨‍💼</div>
+                    <div class="driver-info">
+                      <span class="driver-name" id="active-job-teacher-name">Ustaz Ahmad Syakir</span>
+                      <span class="driver-sub" id="active-job-teacher-phone">+60 12-345 6789</span>
+                    </div>
+                  </div>
+
+                  <!-- Client progression panel / Class Timer -->
+                  <div id="class-timer-box" style="display: none; background: rgba(16,185,129,0.08); border: 1px dashed rgba(16,185,129,0.3); border-radius: 12px; padding: 12px; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                      <span style="font-size:10px; color:var(--color-text-secondary); text-transform:uppercase; font-weight:600; letter-spacing:0.5px;">Sesi Pembelajaran</span>
+                      <span style="font-family:var(--font-display); font-weight:800; font-size:16px; color:var(--color-primary-light);" id="class-timer-clock">00:00:00</span>
+                    </div>
+                    <span style="font-size:10px; padding:4px 8px; border-radius:6px; background:var(--color-primary-dark); color:#ffffff; font-weight:600;">Sedang Berjalan</span>
+                  </div>
+
+                  <div class="live-action-buttons">
+                    <button class="btn-secondary" onclick="openChatRoom()"><i class="ri-message-3-fill"></i> Hubungi Chat</button>
+                    <button class="btn-secondary" onclick="simulateActiveJobNextStep()" style="border-color: var(--color-primary); color: var(--color-primary-light);" id="simulation-skip-btn">Skip Perjalanan</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. CHAT VIEW -->
+            <div id="chat-view" class="view">
+              <div class="view-header">
+                <div class="back-btn" onclick="backFromChat()">
+                  <i class="ri-arrow-left-s-line"></i>
+                </div>
+                <div class="user-profile-header">
+                  <div class="header-avatar" id="chat-teacher-avatar" style="width:34px; height:34px; font-size:15px;">👨‍💼</div>
+                  <div class="user-info">
+                    <span class="user-name" id="chat-teacher-name" style="font-size:13px;">Ustaz Ahmad</span>
+                    <span class="user-greeting" style="color:var(--color-primary-light);">Dalam Talian</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chat-room-container">
+                <div class="chat-message-list" id="chat-messages-container">
+                  <!-- Dynamic chat bubbles -->
+                </div>
+
+                <!-- Suggestions quick messages bar -->
+                <div class="chat-suggestions-bar" id="chat-suggestions-list">
+                  <div class="suggestion-chip" onclick="sendSuggestionChat('Assalamualaikum ustaz.')">Assalamualaikum</div>
+                  <div class="suggestion-chip" onclick="sendSuggestionChat('InshaAllah saya sedang bersedia di rumah.')">InshaAllah sedia</div>
+                  <div class="suggestion-chip" onclick="sendSuggestionChat('Baik ustaz, terima kasih banyak.')">Terima kasih</div>
+                </div>
+
+                <div class="chat-input-bar">
+                  <input type="text" class="chat-input" id="chat-message-input" placeholder="Tulis mesej anda..." onkeydown="if(event.key === 'Enter') sendCustomChat()">
+                  <button class="chat-send-btn" onclick="sendCustomChat()"><i class="ri-send-plane-2-fill"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. WALLET VIEW -->
+            <div id="wallet-view" class="view">
+              <div class="view-header">
+                <div class="back-btn" onclick="navigateTo('home-view')">
+                  <i class="ri-arrow-left-s-line"></i>
+                </div>
+                <span class="view-title">AgamaKu Pay</span>
+              </div>
+              <div class="wallet-scroll-area">
+                <div class="wallet-main-card">
+                  <div class="wallet-card-title">Baki Dompet</div>
+                  <div class="wallet-card-balance" id="wallet-balance-total">RM 150.00</div>
+                  <div class="wallet-badge-row">
+                    <div class="wallet-tag-badge">Jemaah Sholeh</div>
+                    <div class="wallet-tag-badge" style="background:rgba(234,179,8,0.25); color:var(--color-gold-light);">Tahfiz Badge</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <span class="form-label"><i class="ri-money-dollar-circle-fill"></i> Jumlah Tambah Nilai / Pengeluaran</span>
+                  <div class="amount-input-box">
+                    <span class="currency-lbl">RM</span>
+                    <input type="number" class="topup-num-input" id="wallet-input-amount" value="50" placeholder="0">
+                  </div>
+                </div>
+
+                <div class="quick-amount-grid">
+                  <div class="quick-amount-chip" onclick="setWalletInputAmount(10)">+RM10</div>
+                  <div class="quick-amount-chip" onclick="setWalletInputAmount(20)">+RM20</div>
+                  <div class="quick-amount-chip" onclick="setWalletInputAmount(50)">+RM50</div>
+                  <div class="quick-amount-chip" onclick="setWalletInputAmount(100)">+RM100</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top: 10px;">
+                  <button class="btn-primary" onclick="performTopUp()"><i class="ri-download-line"></i> Tambah Nilai</button>
+                  <button class="btn-secondary" onclick="performWithdrawal()" style="padding:14px;"><i class="ri-upload-line"></i> Keluarkan</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7. ACTIVITY HISTORY VIEW -->
+            <div id="history-view" class="view">
+              <div class="view-header">
+                <span class="view-title">Aktiviti Kelas Anda</span>
+              </div>
+              <div class="history-scroll-area" id="history-list-container">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- 8. RATING VIEW -->
+            <div id="review-view" class="view">
+              <div class="rating-view">
+                <div class="profile-avatar-large" style="width: 90px; height: 90px; font-size: 42px; border-color: var(--color-gold);" id="review-teacher-avatar">👨‍💼</div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-family: var(--font-display); font-weight: 800; font-size: 20px; color:#ffffff;" id="review-teacher-name">Ustaz Ahmad Syakir</span>
+                  <span style="font-size:12px; color:var(--color-text-secondary);" id="review-service-desc">Sesi Mengaji & Tajwid Selesai</span>
+                </div>
+                
+                <div style="display:flex; flex-direction:column; gap:12px; margin-top: 15px;">
+                  <span style="font-size:13px; color:var(--color-text-secondary);">Berikan penarafan bintang kepada Ustaz</span>
+                  <div class="rating-star-row">
+                    <i class="ri-star-fill rating-star-btn active" data-rating="1" onclick="rateSession(1)"></i>
+                    <i class="ri-star-fill rating-star-btn active" data-rating="2" onclick="rateSession(2)"></i>
+                    <i class="ri-star-fill rating-star-btn active" data-rating="3" onclick="rateSession(3)"></i>
+                    <i class="ri-star-fill rating-star-btn active" data-rating="4" onclick="rateSession(4)"></i>
+                    <i class="ri-star-fill rating-star-btn active" data-rating="5" onclick="rateSession(5)"></i>
+                  </div>
+                </div>
+
+                <div class="form-group" style="width:100%; text-align:left; margin-top: 10px;">
+                  <span class="form-label"><i class="ri-chat-smile-2-fill"></i> Tulis maklum balas (Optional)</span>
+                  <textarea class="form-textarea" id="review-comment" placeholder="Sesi kelas sangat memuaskan, ustaz sangat profesional..."></textarea>
+                </div>
+
+                <button class="btn-primary" style="width:100%; margin-top: 10px;" onclick="submitSessionReview()">Hantar Maklum Balas</button>
+              </div>
+            </div>
+
+            <!-- 9. PROFILE VIEW -->
+            <div id="profile-view" class="view">
+              <div class="profile-scroll-area">
+                <div class="profile-card">
+                  <div class="profile-avatar-large">🧑</div>
+                  <span class="profile-name">Tengku Adrian</span>
+                  <span class="profile-tag">Pelajar Premium (Sholeh Level 3)</span>
+
+                  <!-- Switching Double Mode -->
+                  <div class="partner-mode-switch-box">
+                    <div class="mode-switch-info">
+                      <span class="mode-switch-label">Mod Ustaz Partner</span>
+                      <span class="mode-switch-sub">Kongsi ilmu & terima bayaran</span>
+                    </div>
+                    <div class="switch-toggle-btn" id="mode-switch-toggle" onclick="toggleDualMode()">
+                      <div class="switch-toggle-knob"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="profile-actions-list">
+                  <div class="action-row" onclick="showToast('Sijil & tauliah anda disahkan oleh JAKIM & AgamaKu')">
+                    <div class="action-row-left">
+                      <i class="ri-file-shield-fill action-icon"></i>
+                      <span>Kelayakan & Sijil Tauliah</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                  <div class="action-row" onclick="showToast('Mengakses maklumat keluarga/anak anda')">
+                    <div class="action-row-left">
+                      <i class="ri-group-fill action-icon"></i>
+                      <span>Profil Anak & Pelajar</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                  <div class="action-row" onclick="navigateTo('wallet-view')">
+                    <div class="action-row-left">
+                      <i class="ri-wallet-3-fill action-icon" style="color:var(--color-gold);"></i>
+                      <span>Transaksi & AgamaKu Pay</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                  <div class="action-row" onclick="showToast('Membuka FAQ & Sokongan AgamaKu')">
+                    <div class="action-row-left">
+                      <i class="ri-questionnaire-fill action-icon"></i>
+                      <span>Pusat Bantuan & Hubungi Kami</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 10. PARTNER/USTAZ MAIN VIEW -->
+            <div id="partner-home-view" class="view">
+              <div class="app-header">
+                <div class="user-profile-header">
+                  <div class="header-avatar" style="background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold));" id="partner-avatar">👳‍♂️</div>
+                  <div class="user-info">
+                    <span class="user-greeting">Ustaz Partner,</span>
+                    <span class="user-name" id="partner-user-name">Ustaz Zulkifli Harun</span>
+                  </div>
+                </div>
+                <div class="wallet-badge" onclick="navigateTo('wallet-view')">
+                  <i class="ri-wallet-3-fill" style="color: var(--color-primary-light);"></i>
+                  <span class="wallet-amount" id="partner-wallet-amount">RM 420.50</span>
+                </div>
+              </div>
+
+              <!-- Sound Alarm / Incoming Job Modal Overlay -->
+              <div class="incoming-job-alarm-overlay" id="job-alarm-modal">
+                <div class="alarm-pulsing-header">
+                  <div class="alarm-icon-ring">🤲</div>
+                  <div style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="font-family:var(--font-display); font-weight:800; font-size:22px; color:#ffffff;">Panggilan Kelas Masuk!</span>
+                    <span style="font-size:12px; color:var(--color-text-secondary);">Berdekatan dengan lokasi semasa anda</span>
+                  </div>
+                  <div class="alarm-countdown-circle" id="alarm-countdown-text">15</div>
+                </div>
+
+                <div class="incoming-job-details-card">
+                  <div class="job-detail-row">
+                    <span class="job-detail-label">Servis Diminta</span>
+                    <span class="job-detail-value" id="alarm-service-name">Doa Selamat & Tahlil</span>
+                  </div>
+                  <div class="job-detail-row">
+                    <span class="job-detail-label">Anggaran Hasil</span>
+                    <span class="job-detail-value gold" id="alarm-estimated-earning">RM 50.00</span>
+                  </div>
+                  <div class="job-detail-row">
+                    <span class="job-detail-label">Nama Pelajar</span>
+                    <span class="job-detail-value" id="alarm-client-name">Tengku Adrian</span>
+                  </div>
+                  <div class="job-detail-row">
+                    <span class="job-detail-label">Masa & Tarikh</span>
+                    <span class="job-detail-value" id="alarm-datetime-text">Hari ini, 5:00 PM</span>
+                  </div>
+                  <div class="job-address-block">
+                    <span class="job-detail-label"><i class="ri-map-pin-fill"></i> Alamat Destinasi</span>
+                    <span style="font-size:12px; font-weight:500;" id="alarm-address-text">No. 12, Jalan Ampang Hilir, Kuala Lumpur</span>
+                  </div>
+                </div>
+
+                <div class="alarm-action-buttons">
+                  <button class="btn-reject" onclick="rejectIncomingJob()">Tolak</button>
+                  <button class="btn-primary" onclick="acceptIncomingJob()"><i class="ri-checkbox-circle-fill"></i> Terima Kerja</button>
+                </div>
+              </div>
+
+              <!-- Partner view main scroll container -->
+              <div class="partner-dash-scroll">
+                
+                <!-- Online Toggle Banner -->
+                <div class="partner-status-header-card">
+                  <div class="status-label-column">
+                    <span class="partner-status-title">Status Ketersediaan</span>
+                    <span class="partner-status-status" id="partner-online-status-lbl">Luar Talian (Offline)</span>
+                  </div>
+                  <!-- Availability Toggle -->
+                  <div class="switch-toggle-btn" id="partner-status-toggle" onclick="togglePartnerAvailability()">
+                    <div class="switch-toggle-knob"></div>
+                  </div>
+                </div>
+
+                <!-- Statistics Grid -->
+                <div class="section-title">
+                  <span>Hasil Tugasan Anda</span>
+                </div>
+                <div class="stats-grid">
+                  <div class="stat-item-card">
+                    <span class="stat-item-label">Hari Ini</span>
+                    <span class="stat-item-value green" id="partner-stats-today">RM 0.00</span>
+                    <span class="stat-item-sub">0 tugasan siap</span>
+                  </div>
+                  <div class="stat-item-card">
+                    <span class="stat-item-label">Minggu Ini</span>
+                    <span class="stat-item-value" id="partner-stats-week">RM 245.00</span>
+                    <span class="stat-item-sub">5 tugasan siap</span>
+                  </div>
+                  <div class="stat-item-card">
+                    <span class="stat-item-label">Kedudukan</span>
+                    <span class="stat-item-value" style="color: var(--color-gold);">Emas (Gold)</span>
+                    <span class="stat-item-sub">Komuniti Top 10%</span>
+                  </div>
+                  <div class="stat-item-card">
+                    <span class="stat-item-label">Penarafan</span>
+                    <span class="stat-item-value">⭐ 4.93</span>
+                    <span class="stat-item-sub">Dari 54 maklum balas</span>
+                  </div>
+                </div>
+
+                <!-- Partner action utilities list -->
+                <div class="section-title">
+                  <span>Utiliti Rakan Kongsi</span>
+                </div>
+                <div class="profile-actions-list">
+                  <div class="action-row" onclick="showToast('Konfigurasi yuran pembelajaran anda')">
+                    <div class="action-row-left">
+                      <i class="ri-settings-4-fill action-icon"></i>
+                      <span>Tetapan Kadar Jam & Jadual</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                  <div class="action-row" onclick="showToast('Memaparkan pendaftaran sijil bertauliah')">
+                    <div class="action-row-left">
+                      <i class="ri-award-fill action-icon" style="color:var(--color-gold);"></i>
+                      <span>Tauliah Bertauliah JAWI/JAKIM</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                  <div class="action-row" onclick="navigateTo('profile-view')">
+                    <div class="action-row-left">
+                      <i class="ri-user-settings-fill action-icon"></i>
+                      <span>Kembali ke Profil Pengguna</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div> <!-- View container end -->
+
+          <!-- Navigation bottom bar (Swaps according to active mode: user vs partner) -->
+          <div class="bottom-nav" id="app-bottom-nav">
+            <div class="nav-item active" onclick="navigateTo('home-view')" id="nav-home">
+              <i class="ri-home-7-fill"></i>
+              <span>Utama</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('history-view')" id="nav-history">
+              <i class="ri-calendar-todo-fill"></i>
+              <span>Aktiviti</span>
+            </div>
+            <div class="nav-item" onclick="openChatRoom()" id="nav-chat">
+              <i class="ri-message-3-fill"></i>
+              <span>Mesej</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('profile-view')" id="nav-profile">
+              <i class="ri-user-fill"></i>
+              <span>Profil</span>
+            </div>
+          </div>
+
+          <!-- Bottom Home Indicator -->
+          <div class="phone-home-indicator"></div>
+
+        </div> <!-- Screen Shell End -->
+      </div> <!-- Phone emulator end -->
+    </div> <!-- Emulator pane end -->
+
+    <!-- Right Side: Beautiful Interactive Presentation Showcase Panel -->
+    <div class="showcase-pane">
+      <div class="showcase-badge">
+        <i class="ri-sparkling-fill"></i> Aplikasi Inovatif AgamaKu v1.2
+      </div>
+      <h1 class="showcase-title">Aplikasi Grab Perkhidmatan Agama Pertama Malaysia</h1>
+      <p class="showcase-desc">
+        Hubungkan ustaz & ustazah bertauliah ke rumah anda semudah menempah kenderaan. Direka khas secara mobile-first, AgamaKu membawakan ketenangan minda pembelajaran agama bagi keluarga moden.
+      </p>
+
+      <div class="showcase-features-grid">
+        <div class="showcase-feature-card">
+          <div class="feature-icon">📖</div>
+          <div class="feature-title">Pilihan Pengajian Lengkap</div>
+          <div class="feature-desc">Dari asas mengaji tajwid kanak-kanak sehingga tadabbur quran dewasa.</div>
+        </div>
+        <div class="showcase-feature-card">
+          <div class="feature-icon">👳‍♂️</div>
+          <div class="feature-title">Rakan Ustaz Bertauliah</div>
+          <div class="feature-desc">Kesemua pengajar melalui saringan kelayakan & pendaftaran tauliah rasmi (JAKIM/JAWI).</div>
+        </div>
+        <div class="showcase-feature-card">
+          <div class="feature-icon">🗺️</div>
+          <div class="feature-title">Pemetaan Vektor Live</div>
+          <div class="feature-desc">Perhatikan pergerakan guru mengaji secara langsung di peta live vector interaktif.</div>
+        </div>
+        <div class="showcase-feature-card">
+          <div class="feature-icon">💳</div>
+          <div class="feature-title">AgamaKu Pay Seamless</div>
+          <div class="feature-desc">Urus baki dompet pembelajaran, top-up tunai, serta transaksi hasil secara telus.</div>
+        </div>
+      </div>
+
+      <div class="showcase-footer">
+        <p>© 2026 AgamaKu Inc. Hak Cipta Terpelihara. Dibina secara eksklusif dengan HSL Emerald UI.</p>
+      </div>
+    </div> <!-- Showcase pane end -->
+
+    <!-- Double Mode Switching Transitional Overlay Screen -->
+    <div class="mode-switch-screen-overlay" id="mode-switch-overlay">
+      <div class="transition-spiral">☪</div>
+      <div class="transition-label" id="mode-switch-overlay-label">Menukar Mod...</div>
+    </div>
+
+  </div> <!-- Showcase container end -->
+
+  <!-- Load script files (Dependencies logic) -->
+  <script src="data.js"></script>
+  <script src="map.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
