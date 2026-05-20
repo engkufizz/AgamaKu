@@ -1791,3 +1791,276 @@ body {
   font-size: 12px;
   font-weight: 500;
 }
+
+/* ==========================================================================
+   12. Desktop Widescreen Mode Styles
+   ========================================================================== */
+@keyframes pulseGlow {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+  100% { transform: scale(1.1); box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+}
+
+body.desktop-widescreen-mode .showcase-pane {
+  display: none !important;
+}
+
+body.desktop-widescreen-mode .emulator-pane {
+  flex: 1 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  background: var(--color-bg-base) !important;
+  border-right: none !important;
+}
+
+body.desktop-widescreen-mode .phone-emulator {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body.desktop-widescreen-mode .phone-emulator::after {
+  display: none !important;
+}
+
+body.desktop-widescreen-mode .phone-notch-elements {
+  display: none !important;
+}
+
+body.desktop-widescreen-mode .phone-home-indicator {
+  display: none !important;
+}
+
+body.desktop-widescreen-mode .screen-shell {
+  display: grid !important;
+  grid-template-columns: 260px 1fr !important;
+  grid-template-rows: 56px 1fr !important;
+  grid-template-areas:
+    "sidebar statusbar"
+    "sidebar maincontent" !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding-top: 0 !important;
+}
+
+body.desktop-widescreen-mode .phone-status-bar {
+  grid-area: statusbar !important;
+  height: 56px !important;
+  background: rgba(13, 22, 20, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: var(--border-glow) !important;
+  padding: 0 30px !important;
+}
+
+body.desktop-widescreen-mode .phone-status-bar .status-bar-icons {
+  margin-left: auto !important;
+}
+
+body.desktop-widescreen-mode .phone-status-bar #live-clock {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+body.desktop-widescreen-mode .view-container {
+  grid-area: maincontent !important;
+  background: var(--color-bg-base) !important;
+  height: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Sidebar morphing */
+body.desktop-widescreen-mode .bottom-nav {
+  grid-area: sidebar !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 260px !important;
+  height: 100vh !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  background-color: var(--color-bg-panel) !important;
+  border-top: none !important;
+  border-right: var(--border-glow) !important;
+  padding: 30px 14px 20px 14px !important;
+  gap: 10px !important;
+  position: relative !important;
+  backdrop-filter: none !important;
+}
+
+body.desktop-widescreen-mode .nav-item {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 14px 20px !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  color: var(--color-text-secondary) !important;
+  box-sizing: border-box !important;
+  justify-content: flex-start !important;
+}
+
+body.desktop-widescreen-mode .nav-item i {
+  font-size: 22px !important;
+  transition: transform 0.2s ease !important;
+}
+
+body.desktop-widescreen-mode .nav-item.active {
+  background: rgba(16, 185, 129, 0.08) !important;
+  color: var(--color-primary-light) !important;
+  border-left: 3px solid var(--color-primary) !important;
+  border-radius: 0 12px 12px 0 !important;
+}
+
+body.desktop-widescreen-mode .nav-item.active::after {
+  display: none !important;
+}
+
+body.desktop-widescreen-mode .nav-item:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: #ffffff !important;
+}
+
+body.desktop-widescreen-mode .emulator-only-toggle {
+  display: flex !important;
+  margin-top: auto !important;
+  border-top: 1px solid rgba(16, 185, 129, 0.08) !important;
+  padding-top: 20px !important;
+}
+
+/* Inner content alignment and centering */
+body.desktop-widescreen-mode .home-scroll-area,
+body.desktop-widescreen-mode .booking-form-area,
+body.desktop-widescreen-mode .wallet-scroll-area,
+body.desktop-widescreen-mode .profile-scroll-area,
+body.desktop-widescreen-mode .partner-dash-scroll,
+body.desktop-widescreen-mode .history-scroll-area,
+body.desktop-widescreen-mode .rating-view,
+body.desktop-widescreen-mode .chat-room-container {
+  max-width: 1100px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 30px !important;
+  box-sizing: border-box !important;
+}
+
+/* Beautiful grids reflow */
+body.desktop-widescreen-mode .category-grid {
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 20px !important;
+}
+
+body.desktop-widescreen-mode .category-icon-wrapper {
+  width: 76px !important;
+  height: 76px !important;
+  font-size: 34px !important;
+  border-radius: 22px !important;
+}
+
+body.desktop-widescreen-mode .category-name {
+  font-size: 12px !important;
+}
+
+body.desktop-widescreen-mode .featured-teachers-list {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 20px !important;
+}
+
+body.desktop-widescreen-mode .teacher-item-card {
+  height: 100% !important;
+}
+
+body.desktop-widescreen-mode .stats-grid {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 20px !important;
+}
+
+/* Booking Form Reflow */
+body.desktop-widescreen-mode .booking-form-area {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  align-content: start !important;
+}
+
+body.desktop-widescreen-mode .booking-form-area .form-group:nth-child(5),
+body.desktop-widescreen-mode .booking-form-area .form-group:nth-child(6),
+body.desktop-widescreen-mode .booking-form-area .booking-summary-box,
+body.desktop-widescreen-mode .booking-form-area button.btn-primary {
+  grid-column: span 2 !important;
+}
+
+body.desktop-widescreen-mode .booking-form-area .form-textarea {
+  height: 100px !important;
+}
+
+/* Wallet Split */
+body.desktop-widescreen-mode .wallet-scroll-area {
+  display: grid !important;
+  grid-template-columns: 1.2fr 1fr !important;
+  gap: 30px !important;
+  align-items: start !important;
+}
+
+body.desktop-widescreen-mode .wallet-scroll-area .form-group,
+body.desktop-widescreen-mode .wallet-scroll-area .quick-amount-grid,
+body.desktop-widescreen-mode .wallet-scroll-area div:last-child {
+  grid-column: 1 !important;
+}
+
+body.desktop-widescreen-mode .wallet-scroll-area .wallet-main-card {
+  grid-column: 2 !important;
+  grid-row: 1 / span 4 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+/* Profile screen centering */
+body.desktop-widescreen-mode .profile-card {
+  max-width: 600px !important;
+  margin: 0 auto !important;
+}
+
+body.desktop-widescreen-mode .profile-actions-list {
+  max-width: 600px !important;
+  margin: 0 auto !important;
+}
+
+/* Interactive Dispatch Tracking View Split Screen */
+body.desktop-widescreen-mode .map-tracker-view {
+  flex-direction: row !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+body.desktop-widescreen-mode .map-wrapper {
+  flex: 0 0 65% !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
+body.desktop-widescreen-mode .floating-overlay-card {
+  position: relative !important;
+  flex: 1 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  border: none !important;
+  border-left: var(--border-glow) !important;
+  background: var(--color-bg-panel) !important;
+  padding: 30px !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+

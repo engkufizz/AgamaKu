@@ -78,6 +78,10 @@ function initApp() {
   populateBookingSelect();
   renderHistoryList();
 
+  // Recovery of widescreen mode setting
+  const widescreenSaved = DB.get('desktop_widescreen_mode', false);
+  toggleDesktopWidescreen(widescreenSaved);
+
   // 4. Handle recovery of active bookings
   if (appState.currentBooking) {
     recoverActiveBooking();
@@ -1193,3 +1197,45 @@ function acceptIncomingJob() {
 
   }, 100);
 }
+
+// ----------------------------------------------------
+// Desktop Widescreen Layout Switches
+// ----------------------------------------------------
+function toggleDesktopWidescreen(enable) {
+  appState.desktopWidescreen = enable;
+  DB.set('desktop_widescreen_mode', enable);
+
+  const body = document.body;
+  const desktopTopbar = document.getElementById('desktop-topbar-controls');
+  const showMobileToggles = document.querySelectorAll('.emulator-only-toggle');
+
+  if (enable) {
+    body.classList.add('desktop-widescreen-mode');
+    
+    // Show top bar desktop details
+    if (desktopTopbar) desktopTopbar.style.display = 'flex';
+    
+    // Show sidebar phone-mode return link
+    showMobileToggles.forEach(el => el.style.display = 'flex');
+    
+    showToast('Paparan Widescreen Desktop Aktif!', true);
+  } else {
+    body.classList.remove('desktop-widescreen-mode');
+    
+    // Hide top bar desktop details
+    if (desktopTopbar) desktopTopbar.style.display = 'none';
+    
+    // Hide sidebar phone-mode return link
+    showMobileToggles.forEach(el => el.style.display = 'none');
+    
+    showToast('Paparan Telefon Mudah Alih Aktif!', true);
+  }
+
+  // Redraw/resize vector canvas map to fit its new width/height boundaries
+  if (appState.activeMap) {
+    setTimeout(() => {
+      appState.activeMap.resize();
+    }, 150);
+  }
+}
+

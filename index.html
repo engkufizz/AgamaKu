@@ -29,6 +29,18 @@
           <!-- Live Status Bar -->
           <div class="phone-status-bar">
             <span id="live-clock">16:45</span>
+            
+            <!-- Desktop Widescreen Controls -->
+            <div class="desktop-topbar-controls" id="desktop-topbar-controls" style="display: none; align-items: center; gap: 14px;">
+              <span style="color: var(--color-primary-light); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; display: inline-block; animation: pulseGlow 1.5s infinite alternate;"></span>
+                Mod Desktop Aktif
+              </span>
+              <button onclick="toggleDesktopWidescreen(false)" style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.25); color: var(--color-gold-light); font-family: var(--font-display); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <i class="ri-phone-fill"></i> Mod Telefon
+              </button>
+            </div>
+
             <div class="status-bar-icons">
               <i class="ri-signal-tower-fill"></i>
               <i class="ri-wifi-fill"></i>
@@ -550,6 +562,11 @@
               <i class="ri-user-fill"></i>
               <span>Profil</span>
             </div>
+            <!-- Mod Telefon return toggle (Visible only on widescreen sidebar bottom) -->
+            <div class="nav-item emulator-only-toggle" onclick="toggleDesktopWidescreen(false)" style="margin-top: auto; display: none;">
+              <i class="ri-phone-line" style="color: var(--color-gold);"></i>
+              <span style="color: var(--color-gold-light);">Mod Telefon</span>
+            </div>
           </div>
 
           <!-- Bottom Home Indicator -->
@@ -568,6 +585,20 @@
       <p class="showcase-desc">
         Hubungkan ustaz & ustazah bertauliah ke rumah anda semudah menempah kenderaan. Direka khas secara mobile-first, AgamaKu membawakan ketenangan minda pembelajaran agama bagi keluarga moden.
       </p>
+
+      <!-- Desktop Mode Call-to-Action -->
+      <div class="showcase-desktop-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(234, 179, 8, 0.04) 100%); border: var(--border-glow); border-radius: 20px; padding: 24px; margin-bottom: 30px; position: relative; overflow: hidden; box-shadow: var(--shadow-premium);">
+        <div style="position: absolute; right: -10px; bottom: -20px; font-size: 80px; opacity: 0.03; color: #ffffff;">💻</div>
+        <h3 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <i class="ri-computer-line" style="color: var(--color-primary-light);"></i> Paparan Widescreen Desktop
+        </h3>
+        <p style="font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 16px; max-width: 480px;">
+          Gunakan susun atur dashboard premium yang direka khusus untuk pengguna komputer. Peta vector live, borang tempahan, dan ruangan sembang akan berkembang secara visual.
+        </p>
+        <button class="btn-primary" onclick="toggleDesktopWidescreen(true)" style="padding: 10px 18px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="ri-window-line"></i> Gunakan Paparan Desktop
+        </button>
+      </div>
 
       <div class="showcase-features-grid">
         <div class="showcase-feature-card">
