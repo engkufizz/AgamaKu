@@ -9,7 +9,9 @@ let appState = {
   soundInterval: null,
   jobCountdownInterval: null,
   classTimerInterval: null,
-  partnerOnlineTimeout: null
+  partnerOnlineTimeout: null,
+  selectedTeacher: null,
+  profileBackView: 'home-view'
 };
 
 // Initial User Profile setup if not already in local storage
@@ -131,7 +133,7 @@ function renderFeaturedTeachers() {
 
     const card = document.createElement('div');
     card.className = 'teacher-item-card';
-    card.onclick = () => openBooking(teacher.specialties[0]);
+    card.onclick = () => openTeacherProfile(teacher.id, 'home-view');
     card.innerHTML = `
       <div class="teacher-item-avatar">${teacher.avatar}</div>
       <div class="teacher-item-details">
@@ -278,6 +280,20 @@ function openBooking(serviceId) {
   const localISOTime = (new Date(now - tzoffset)).toISOString().slice(0, 16);
   document.getElementById('booking-datetime').value = localISOTime;
 
+  // Handle selected locked teacher banner and gender pref row visibility
+  const lockedBanner = document.getElementById('booking-locked-teacher');
+  const genderGroup = document.getElementById('booking-gender-toggle').parentElement;
+
+  if (appState.selectedTeacher) {
+    document.getElementById('locked-teacher-name').textContent = appState.selectedTeacher.name;
+    document.getElementById('locked-teacher-avatar').textContent = appState.selectedTeacher.avatar;
+    lockedBanner.style.display = 'flex';
+    genderGroup.style.display = 'none';
+  } else {
+    lockedBanner.style.display = 'none';
+    genderGroup.style.display = 'block';
+  }
+
   calculateBookingPrice();
   navigateTo('booking-view');
 }
@@ -297,11 +313,17 @@ function calculateBookingPrice() {
   const select = document.getElementById('booking-service-select');
   const serviceId = select.value;
   const service = initialServices.find(s => s.id === serviceId);
-  if (!service) return;
+  if (!service) return 0;
 
   const durationActive = document.querySelector('#booking-duration-toggle .toggle-option.active');
-  const hours = parseFloat(durationActive.getAttribute('data-hours'));
-  const price = service.pricePerHour * hours;
+  const hours = durationActive ? parseFloat(durationActive.getAttribute('data-hours')) : 1;
+  
+  let ratePerHour = service.pricePerHour;
+  if (appState.selectedTeacher) {
+    ratePerHour = appState.selectedTeacher.hourlyRate;
+  }
+  
+  const price = ratePerHour * hours;
 
   document.getElementById('booking-estimated-price').textContent = `RM ${price.toFixed(2)}`;
   return price;
@@ -341,7 +363,11 @@ function startBookingSearch() {
   navigateTo('matching-view');
 
   // If partner is ONLINE, we trigger the real job ping!
-  if (appState.partnerUser.role === 'partner' && appState.partnerUser.online) {
+  // However, if the user locked a specific teacher that is NOT the partner (Zulkifli), we bypass dual simulation.
+  const isZulkifliBooking = appState.selectedTeacher && appState.selectedTeacher.id === 'ustaz_zulkifli';
+  const bypassDualSim = appState.selectedTeacher && !isZulkifliBooking;
+
+  if (appState.partnerUser.role === 'partner' && appState.partnerUser.online && !bypassDualSim) {
     // This is the dual mode cross simulation!
     // The user has booked a service. We will trigger the incoming job offer alarm in partner mode,
     // and wait for the user to switch to partner mode to accept it!
@@ -372,19 +398,24 @@ function startBookingSearch() {
 
   // Normal Simulation: Search for nearest matching Ustaz automatically after 4 seconds
   let matchTimeout = setTimeout(() => {
-    // Find teacher matching gender preference
     let matchedTeacher = null;
-    const candidates = initialUstazList.filter(t => {
-      if (genderPref !== 'any' && t.gender !== genderPref) return false;
-      return t.specialties.includes(serviceId);
-    });
-
-    if (candidates.length > 0) {
-      // Pick random matched teacher
-      matchedTeacher = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    if (appState.selectedTeacher) {
+      matchedTeacher = appState.selectedTeacher;
     } else {
-      // Fallback
-      matchedTeacher = initialUstazList[0];
+      // Find teacher matching gender preference
+      const candidates = initialUstazList.filter(t => {
+        if (genderPref !== 'any' && t.gender !== genderPref) return false;
+        return t.specialties.includes(serviceId);
+      });
+
+      if (candidates.length > 0) {
+        // Pick random matched teacher
+        matchedTeacher = candidates[Math.floor(Math.random() * candidates.length)];
+      } else {
+        // Fallback
+        matchedTeacher = initialUstazList[0];
+      }
     }
 
     // Deduct yuran
@@ -1238,4 +1269,199 @@ function toggleDesktopWidescreen(enable) {
     }, 150);
   }
 }
+
+// ----------------------------------------------------
+// Directory Listing & Teacher Profile Handlers
+// ----------------------------------------------------
+function openCategoryTeachers(categoryId) {
+  const container = document.getElementById('teachers-list-container');
+  container.innerHTML = '';
+
+  const category = initialServices.find(s => s.id === categoryId);
+  const filterBadgeEl = document.getElementById('teachers-list-filter-badge');
+  const viewTitleEl = document.getElementById('teachers-list-title');
+
+  let filteredTeachers = initialUstazList;
+
+  if (categoryId === 'all' || !category) {
+    viewTitleEl.textContent = 'Direktori Guru';
+    filterBadgeEl.innerHTML = '';
+  } else {
+    viewTitleEl.textContent = `${category.name}`;
+    filterBadgeEl.innerHTML = `
+      <div class="category-filter-badge">
+        <span>Kategori: <b>${category.name}</b></span>
+        <button onclick="openCategoryTeachers('all')"><i class="ri-close-circle-fill"></i></button>
+      </div>
+    `;
+    filteredTeachers = initialUstazList.filter(t => t.specialties.includes(categoryId));
+  }
+
+  if (filteredTeachers.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: var(--color-text-secondary);">
+        <span style="font-size: 40px; display: block; margin-bottom: 10px;">🕌</span>
+        <span>Maaf, tiada Ustaz/Ustazah bertauliah tersedia untuk kategori ini buat masa sekarang.</span>
+      </div>
+    `;
+  } else {
+    filteredTeachers.forEach(teacher => {
+      const specialtiesText = teacher.specialties.map(specId => {
+        const spec = initialServices.find(s => s.id === specId);
+        return `<span class="specialty-tag">${spec ? spec.name.split(' ')[0] : specId}</span>`;
+      }).join(' ');
+
+      const verifiedBadge = teacher.verified ? `<i class="ri-verified-badge-fill" style="color:var(--color-primary-light); font-size:14px; margin-left:4px;"></i>` : '';
+
+      const card = document.createElement('div');
+      card.className = 'teacher-item-card';
+      card.onclick = () => openTeacherProfile(teacher.id, 'teachers-list-view');
+      card.innerHTML = `
+        <div class="teacher-item-avatar">${teacher.avatar}</div>
+        <div class="teacher-item-details">
+          <div class="teacher-item-name-row">
+            <span class="teacher-item-name">${teacher.name}${verifiedBadge}</span>
+            <span class="teacher-item-rating">⭐ ${teacher.rating.toFixed(1)}</span>
+          </div>
+          <div class="teacher-item-specialties">
+            ${specialtiesText}
+          </div>
+          <div class="teacher-item-rate">RM ${teacher.hourlyRate.toFixed(2)}<span>/jam</span></div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  navigateTo('teachers-list-view');
+}
+
+function goBackFromTeachersList() {
+  navigateTo('home-view');
+}
+
+function openTeacherProfile(teacherId, backViewId) {
+  const teacher = initialUstazList.find(t => t.id === teacherId);
+  if (!teacher) return;
+
+  if (backViewId) {
+    appState.profileBackView = backViewId;
+  }
+
+  appState.viewingTeacher = teacher;
+
+  const scrollContainer = document.getElementById('teacher-profile-scroll');
+  
+  const verifiedBadge = teacher.verified ? `<i class="ri-verified-badge-fill" style="color:var(--color-primary-light); font-size:18px; margin-left:4px;"></i>` : '';
+
+  const badgesHtml = teacher.badges.map(b => `<span class="profile-badge-pill">${b}</span>`).join('');
+
+  const specialtiesHtml = teacher.specialties.map(specId => {
+    const spec = initialServices.find(s => s.id === specId);
+    return `<div class="profile-specialty-card">${spec ? spec.icon : '📖'} <span>${spec ? spec.name : specId}</span></div>`;
+  }).join('');
+
+  const reviews = initialReviews.filter(r => r.teacherId === teacher.id);
+  let reviewsHtml = '';
+  if (reviews.length > 0) {
+    reviewsHtml = reviews.map(r => `
+      <div class="review-item">
+        <div class="review-header">
+          <span class="review-author">${r.userName}</span>
+          <span class="review-date">${r.date}</span>
+        </div>
+        <div class="review-rating">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+        <div class="review-text">"${r.comment}"</div>
+      </div>
+    `).join('');
+  } else {
+    reviewsHtml = `<div style="text-align: center; padding: 20px 0; color: var(--color-text-secondary); font-size: 12px; font-style: italic;">Belum ada ulasan rasmi untuk guru ini.</div>`;
+  }
+
+  scrollContainer.innerHTML = `
+    <!-- Header info card -->
+    <div class="profile-header-card">
+      <div class="glowing-avatar-ring">${teacher.avatar}</div>
+      <div class="profile-name">${teacher.name}${verifiedBadge}</div>
+      <div class="profile-rating-row">
+        <div class="profile-rating-badge">⭐ ${teacher.rating.toFixed(1)}</div>
+        <span class="profile-reviews-count">(${teacher.reviewsCount} Ulasan)</span>
+      </div>
+      <div class="profile-badges-row">
+        ${badgesHtml}
+      </div>
+    </div>
+
+    <!-- Kadar Harga Box -->
+    <div class="profile-rate-box">
+      <div>
+        <span class="profile-rate-label"><i class="ri-price-tag-3-fill"></i> Yuran Per Jam</span>
+        <span class="profile-rate-amount">RM ${teacher.hourlyRate.toFixed(2)}<span class="profile-rate-unit">/jam</span></span>
+      </div>
+      <span style="font-size: 10px; background: rgba(16, 185, 129, 0.12); color: var(--color-primary-light); padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1px solid rgba(16,185,129,0.2);">TAULIAH RESMI</span>
+    </div>
+
+    <!-- Biodata / Mengenai -->
+    <div class="profile-section">
+      <span class="profile-section-title">Mengenai Guru</span>
+      <div class="profile-bio-box">
+        ${teacher.bio}
+      </div>
+    </div>
+
+    <!-- Subjek Kepakaran -->
+    <div class="profile-section">
+      <span class="profile-section-title">Bidang Mengajar</span>
+      <div class="profile-specialties-box">
+        ${specialtiesHtml}
+      </div>
+    </div>
+
+    <!-- Senarai Ulasan Pengguna -->
+    <div class="profile-section">
+      <span class="profile-section-title">Ulasan Pengguna (${reviews.length})</span>
+      <div class="reviews-list">
+        ${reviewsHtml}
+      </div>
+    </div>
+  `;
+
+  navigateTo('teacher-profile-view');
+}
+
+function goBackFromTeacherProfile() {
+  navigateTo(appState.profileBackView || 'home-view');
+}
+
+function bookCurrentTeacher() {
+  if (!appState.viewingTeacher) return;
+  
+  appState.selectedTeacher = appState.viewingTeacher;
+  
+  // Choose the first specialty
+  const activeService = appState.selectedTeacher.specialties[0] || 'mengaji';
+  
+  openBooking(activeService);
+}
+
+function clearSelectedTeacher() {
+  appState.selectedTeacher = null;
+  
+  const lockedBanner = document.getElementById('booking-locked-teacher');
+  const genderGroup = document.getElementById('booking-gender-toggle').parentElement;
+  
+  lockedBanner.style.display = 'none';
+  genderGroup.style.display = 'block';
+  
+  calculateBookingPrice();
+}
+
+function goBackFromBooking() {
+  if (appState.selectedTeacher) {
+    navigateTo('teacher-profile-view');
+  } else {
+    navigateTo('home-view');
+  }
+}
+
 
