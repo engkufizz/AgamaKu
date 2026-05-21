@@ -696,14 +696,11 @@ function mapDatabaseBookingToAppState(dbBooking) {
   let chatArray = [];
   if (dbBooking.chatHistory) {
     try {
-      chatArray = JSON.parse(dbBooking.chatHistory);
-    } catch (e) {
-      chatArray = [];
-    }
-  } else if (dbBooking.status !== 'searching') {
-    chatArray = [
-      { sender: 'teacher', text: 'Assalamualaikum. Saya telah menerima tugasan kelas anda. Saya sedang bergerak ke alamat anda sekarang.', time: '16:47' }
-    ];
+      const parsed = JSON.parse(dbBooking.chatHistory);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        chatArray = parsed;
+      }
+    } catch (e) {}
   }
 
   return {
@@ -1223,14 +1220,9 @@ function startAutomaticTeacherMovement() {
       () => {
         // Arrival Trigger
         booking.status = 'arrived';
-        booking.chatHistory.push({
-          sender: 'teacher',
-          text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
-          time: '16:52'
-        });
         DB.set('active_booking', booking);
-
-        // Sync the automated chat message to server
+        
+        // Sync the updated chat history to server
         try {
           fetch('/api/bookings/chat', {
             method: 'POST',
@@ -1277,11 +1269,6 @@ async function simulateActiveJobNextStep() {
       const data = await res.json();
       if (data.success) {
         booking.status = 'arrived';
-        booking.chatHistory.push({
-          sender: 'teacher',
-          text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
-          time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
-        });
         DB.set('active_booking', booking);
         
         // Sync the automated chat message to server
@@ -1316,11 +1303,6 @@ async function simulateActiveJobNextStep() {
       const data = await res.json();
       if (data.success) {
         booking.status = 'started';
-        booking.chatHistory.push({
-          sender: 'teacher',
-          text: 'Sesi pengajian telah bermula. Mari mulakan dengan bacaan Ummul Kitab Al-Fatihah.',
-          time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
-        });
         DB.set('active_booking', booking);
 
         // Sync the automated chat message to server
@@ -1572,33 +1554,15 @@ function sendChatMessage(text) {
   renderChatHistory();
   playAudioTone(987.77, 'sine', 100); // Send sound
 
-  // Simulating response
-  if (!booking.isDualSimulation) {
-    // AI Ustaz automated smart replies
-    setTimeout(() => {
-      let replyText = 'InshaAllah tuan, saya faham. Jazakallahu Khairan.';
-      if (text.toLowerCase().includes('salam') || text.toLowerCase().includes('slm')) {
-        replyText = 'Waalaikumussalam warahmatullah. Terima kasih atas mesej. Saya segera tiba.';
-      } else if (text.toLowerCase().includes('alamat') || text.toLowerCase().includes('jalan')) {
-        replyText = 'Baik tuan, navigasi saya menunjukkan alamat tersebut dengan jelas. Jumpa nanti.';
-      } else if (text.toLowerCase().includes('lambat') || text.toLowerCase().includes('jalan jam')) {
-        replyText = 'Baik tuan. Saya akan memandu dengan berhati-hati. Terima kasih atas makluman.';
-      }
+  // Sync message to server so real partner receives it
+  fetch('/api/bookings/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookingId: booking.id, chatHistory: booking.chatHistory })
+  }).catch(e => console.error('Error syncing chat:', e));
 
-      booking.chatHistory.push({
-        sender: 'teacher',
-        text: replyText,
-        time: timeStr
-      });
-      DB.set('active_booking', booking);
-      
-      if (appState.activeView === 'chat-view') {
-        renderChatHistory();
-      }
-      showToast(`Mesej baru dari ${booking.teacher.name}!`);
-      playAudioTone(523.25, 'sine', 150); // Message sound
-    }, 2000);
-  }
+  // Removed AI simulated replies to make chat 100% real.
+  // In a real app, only the actual partner on the other end will reply.
 }
 
 // ----------------------------------------------------
@@ -2080,11 +2044,6 @@ async function acceptIncomingJob() {
               body: JSON.stringify({ bookingId: booking.id, status: 'arrived' })
             }).then(() => {
               booking.status = 'arrived';
-              booking.chatHistory.push({
-                sender: 'teacher',
-                text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
-                time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
-              });
               DB.set('active_booking', booking);
               showToast('Anda telah sampai di destinasi!', true);
               playSuccessChime();
