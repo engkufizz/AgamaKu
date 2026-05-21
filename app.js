@@ -587,9 +587,9 @@ function startPollingActiveBookings() {
               }
             }
           }
-        } catch (err) {
-          console.error('Error syncing active partner booking:', err);
         }
+      } catch (err) {
+        console.error('Error syncing active partner booking:', err);
       }
     }
     
@@ -620,64 +620,65 @@ function startPollingActiveBookings() {
             }
 
             if (currentDbBooking.status !== appState.currentBooking.status) {
-            const oldStatus = appState.currentBooking.status;
-            const newStatus = currentDbBooking.status;
-            
-            // Map the fresh db booking details
-            appState.currentBooking = mapDatabaseBookingToAppState(currentDbBooking);
-            DB.set('active_booking', appState.currentBooking);
-            
-            if (newStatus === 'accepted' && oldStatus === 'searching') {
-              playSuccessChime();
-              showToast(`Berjaya dipadankan dengan ${appState.currentBooking.teacher.name}!`);
-              navigateTo('active-job-view');
-              startAutomaticTeacherMovement();
-            } else if (newStatus === 'arrived') {
-              playSuccessChime();
-              showToast('Ustaz telah sampai di alamat anda!', true);
-              updateJourneyUIStates();
-            } else if (newStatus === 'started') {
-              showToast('Sesi kelas dimulakan!', true);
-              updateJourneyUIStates();
-            } else if (newStatus === 'completed') {
-              // STUDENT COMPLETION FLOW (Student reviews Ustaz)
-              const newHistoryItem = {
-                id: appState.currentBooking.id,
-                serviceId: appState.currentBooking.serviceId,
-                serviceName: appState.currentBooking.serviceName,
-                teacherName: appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah',
-                teacherId: appState.currentBooking.teacherId || (appState.currentBooking.teacher ? appState.currentBooking.teacher.id : ''),
-                datetime: appState.currentBooking.datetime,
-                duration: appState.currentBooking.hours,
-                price: appState.currentBooking.price,
-                status: 'completed',
-                rated: false
-              };
-              appState.historyList.unshift(newHistoryItem);
-              DB.set('history_list', appState.historyList);
-              renderHistoryList();
-              updateUIWalletBalances();
+              const oldStatus = appState.currentBooking.status;
+              const newStatus = currentDbBooking.status;
+              
+              // Map the fresh db booking details
+              appState.currentBooking = mapDatabaseBookingToAppState(currentDbBooking);
+              DB.set('active_booking', appState.currentBooking);
+              
+              if (newStatus === 'accepted' && oldStatus === 'searching') {
+                playSuccessChime();
+                showToast(`Berjaya dipadankan dengan ${appState.currentBooking.teacher.name}!`);
+                navigateTo('active-job-view');
+                startAutomaticTeacherMovement();
+              } else if (newStatus === 'arrived') {
+                playSuccessChime();
+                showToast('Ustaz telah sampai di alamat anda!', true);
+                updateJourneyUIStates();
+              } else if (newStatus === 'started') {
+                showToast('Sesi kelas dimulakan!', true);
+                updateJourneyUIStates();
+              } else if (newStatus === 'completed') {
+                // STUDENT COMPLETION FLOW (Student reviews Ustaz)
+                const newHistoryItem = {
+                  id: appState.currentBooking.id,
+                  serviceId: appState.currentBooking.serviceId,
+                  serviceName: appState.currentBooking.serviceName,
+                  teacherName: appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah',
+                  teacherId: appState.currentBooking.teacherId || (appState.currentBooking.teacher ? appState.currentBooking.teacher.id : ''),
+                  datetime: appState.currentBooking.datetime,
+                  duration: appState.currentBooking.hours,
+                  price: appState.currentBooking.price,
+                  status: 'completed',
+                  rated: false
+                };
+                appState.historyList.unshift(newHistoryItem);
+                DB.set('history_list', appState.historyList);
+                renderHistoryList();
+                updateUIWalletBalances();
 
-              // Setup review view fields
-              document.getElementById('review-teacher-avatar').textContent = appState.currentBooking.teacher ? appState.currentBooking.teacher.avatar : '🧕';
-              document.getElementById('review-teacher-name').textContent = appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah';
-              document.getElementById('review-service-desc').textContent = `Sesi ${appState.currentBooking.serviceName} Selesai`;
-              document.getElementById('review-comment').value = '';
-              appState.activeRating = 5;
-              rateSession(5);
+                // Setup review view fields
+                document.getElementById('review-teacher-avatar').textContent = appState.currentBooking.teacher ? appState.currentBooking.teacher.avatar : '🧕';
+                document.getElementById('review-teacher-name').textContent = appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah';
+                document.getElementById('review-service-desc').textContent = `Sesi ${appState.currentBooking.serviceName} Selesai`;
+                document.getElementById('review-comment').value = '';
+                appState.activeRating = 5;
+                rateSession(5);
 
-              // Remove active booking
-              appState.currentBooking = null;
-              DB.set('active_booking', null);
+                // Remove active booking
+                appState.currentBooking = null;
+                DB.set('active_booking', null);
 
-              showToast('Kelas selesai! Terima kasih.', true);
-              playSuccessChime();
-              navigateTo('review-view');
-            } else if (newStatus === 'cancelled') {
-              showToast('Tempahan telah dibatalkan oleh Ustaz.', false);
-              appState.currentBooking = null;
-              DB.set('active_booking', null);
-              navigateTo('home-view');
+                showToast('Kelas selesai! Terima kasih.', true);
+                playSuccessChime();
+                navigateTo('review-view');
+              } else if (newStatus === 'cancelled') {
+                showToast('Tempahan telah dibatalkan oleh Ustaz.', false);
+                appState.currentBooking = null;
+                DB.set('active_booking', null);
+                navigateTo('home-view');
+              }
             }
           }
         }
