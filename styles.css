@@ -966,6 +966,7 @@ body {
   align-items: center;
   text-align: center;
   position: relative;
+  gap: 16px;
 }
 
 .profile-avatar-large {
@@ -979,7 +980,6 @@ body {
   font-size: 36px;
   border: 3px solid #ffffff;
   box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-  margin-bottom: 12px;
 }
 
 .profile-name {

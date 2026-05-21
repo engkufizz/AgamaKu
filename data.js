@@ -135,40 +135,7 @@ const initialUstazList = [
   }
 ];
 
-const initialReviews = [
-  {
-    id: 'rev_1',
-    teacherId: 'ustaz_ahmad',
-    userName: 'Tengku Adrian',
-    rating: 5,
-    date: '2026-05-18',
-    comment: 'Alhamdulillah, Ustaz Ahmad is extremely clear when explaining Tajwid rules. My children improved their pronunciation in just 3 sessions!'
-  },
-  {
-    id: 'rev_2',
-    teacherId: 'ustazah_fatimah',
-    userName: 'Sarah Khalid',
-    rating: 5,
-    date: '2026-05-15',
-    comment: 'Ustazah Fatimah is so patient and gentle. My daughter enjoys her Quran classes so much and keeps asking when the next session is.'
-  },
-  {
-    id: 'rev_3',
-    teacherId: 'ustaz_zulkifli',
-    userName: 'Haji Ibrahim',
-    rating: 5,
-    date: '2026-05-12',
-    comment: 'We booked Ustaz Zulkifli to lead the Doa Selamat ceremony at our new house. His tazkirah was incredibly moving and highly beneficial for our guests.'
-  },
-  {
-    id: 'rev_4',
-    teacherId: 'ustazah_aisyah',
-    userName: 'Norizan Amin',
-    rating: 5,
-    date: '2026-05-10',
-    comment: 'The corporate tadabbur session was excellent. She structured the topics to be very relatable to daily challenges at the workplace.'
-  }
-];
+const initialReviews = [];
 
 // Helper to load/save state
 const DB = {

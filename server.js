@@ -299,6 +299,32 @@ const server = http.createServer(async (req, res) => {
         return jsonResponse(res, 200, reviews);
       }
 
+      // 4b. POST REVIEWS
+      if (parsedUrl === '/api/reviews' && req.method === 'POST') {
+        const body = await readJsonBody(req);
+        if (!body || !body.teacherId || !body.userName || !body.rating || !body.comment) {
+          return jsonResponse(res, 400, { success: false, message: 'Maklumat ulasan tidak lengkap.' });
+        }
+
+        const reviewId = 'rev_' + Date.now();
+        const currentDate = new Date().toISOString().split('T')[0];
+
+        await dbRun(`
+          INSERT INTO reviews (id, teacherId, userName, rating, date, comment)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [reviewId, body.teacherId, body.userName, body.rating, currentDate, body.comment]);
+
+        // Update teacher ratings & reviewsCount
+        await dbRun(`
+          UPDATE teachers 
+          SET reviewsCount = reviewsCount + 1,
+              rating = ROUND(((rating * reviewsCount) + ?) / (reviewsCount + 1), 1)
+          WHERE id = ?
+        `, [body.rating, body.teacherId]);
+
+        return jsonResponse(res, 200, { success: true });
+      }
+
       // 5. POST CLASS BOOKINGS
       if (parsedUrl === '/api/bookings' && req.method === 'POST') {
         const body = await readJsonBody(req);
@@ -384,29 +410,6 @@ const server = http.createServer(async (req, res) => {
             await dbRun('UPDATE users SET balance = balance + ? WHERE id = ?', [booking.totalPrice, teacherUser.id]);
           }
 
-          // Trigger dynamic review creation automatically
-          const reviewId = 'rev_' + Date.now();
-          const reviewComments = [
-            'Alhamdulillah, ustaz sangat tepat pada waktu dan penerangan tajwid amat mudah difahami!',
-            'Kelas tadabbur yang mendalam. Ustazah banyak membimbing dengan sabar dan lembut.',
-            'Sangat membantu dalam melancarkan bacaan doa arwah. Terima kasih banyak Ustaz!',
-            'Penerangan yang jelas, santai, dan sesuai untuk semua peringkat umur.'
-          ];
-          const randomComment = reviewComments[Math.floor(Math.random() * reviewComments.length)];
-          const currentDate = new Date().toISOString().split('T')[0];
-
-          await dbRun(`
-            INSERT INTO reviews (id, teacherId, userName, rating, date, comment)
-            VALUES (?, ?, ?, 5, ?, ?)
-          `, [reviewId, booking.teacherId, student.fullname || 'Pelajar AgamaKu', currentDate, randomComment]);
-
-          // Update teacher ratings & reviewsCount
-          await dbRun(`
-            UPDATE teachers 
-            SET reviewsCount = reviewsCount + 1,
-                rating = ROUND(((rating * reviewsCount) + 5.0) / (reviewsCount + 1), 1)
-            WHERE id = ?
-          `, [booking.teacherId]);
         }
 
         // Update booking status

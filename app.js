@@ -579,6 +579,7 @@ function startPollingActiveBookings() {
                 serviceId: appState.currentBooking.serviceId,
                 serviceName: appState.currentBooking.serviceName,
                 teacherName: appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah',
+                teacherId: appState.currentBooking.teacherId || (appState.currentBooking.teacher ? appState.currentBooking.teacher.id : ''),
                 datetime: appState.currentBooking.datetime,
                 duration: appState.currentBooking.hours,
                 price: appState.currentBooking.price,
@@ -661,6 +662,15 @@ function updateUIWalletBalances() {
     document.getElementById('partner-wallet-amount').textContent = `RM ${partnerBalance.toFixed(2)}`;
     document.getElementById('partner-stats-today').textContent = `RM ${appState.partnerUser.earningsToday.toFixed(2)}`;
     document.getElementById('partner-stats-week').textContent = `RM ${appState.partnerUser.earningsWeek.toFixed(2)}`;
+    
+    // Update reviews and ratings in the dashboard
+    if (appState.currentUser && appState.currentUser.teacher_id) {
+      const myTeacher = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+      if (myTeacher) {
+        document.getElementById('partner-rating-val').textContent = `⭐ ${myTeacher.rating.toFixed(1)}`;
+        document.getElementById('partner-tier-val').textContent = `${myTeacher.reviewsCount || 0}`;
+      }
+    }
   }
 }
 
@@ -1251,6 +1261,7 @@ async function simulateActiveJobNextStep() {
           serviceId: booking.serviceId,
           serviceName: booking.serviceName,
           teacherName: booking.teacher ? booking.teacher.name : 'Ustaz Ahmad',
+          teacherId: booking.teacherId || (booking.teacher ? booking.teacher.id : ''),
           datetime: booking.datetime,
           duration: booking.hours,
           price: booking.price,
@@ -1461,14 +1472,41 @@ function rateSession(stars) {
   });
 }
 
-function submitSessionReview() {
+async function submitSessionReview() {
   const comment = document.getElementById('review-comment').value.trim();
+  const userName = appState.currentUser ? appState.currentUser.fullname : 'Pelajar';
+  const rating = appState.activeRating || 5;
+  let teacherId = '';
+
+  if (appState.historyList.length > 0) {
+    teacherId = appState.historyList[0].teacherId;
+  }
+
+  if (teacherId && comment !== '') {
+    try {
+      await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: teacherId,
+          userName: userName,
+          rating: rating,
+          comment: comment
+        })
+      });
+      // Reload db data to get fresh reviews globally
+      await loadDatabaseData();
+    } catch (e) {
+      console.error('Failed to submit review to server:', e);
+    }
+  }
+
   showToast('Terima kasih! Maklum balas anda telah direkodkan.');
   
   // Set rating status of last completed session in list
   if (appState.historyList.length > 0) {
     appState.historyList[0].rated = true;
-    appState.historyList[0].rating = appState.activeRating;
+    appState.historyList[0].rating = rating;
     DB.set('history_list', appState.historyList);
     renderHistoryList();
   }
@@ -1627,6 +1665,18 @@ function updateUserProfileUI() {
     } else {
       partnerSwitchBox.style.display = 'none';
     }
+  }
+
+  // Toggle action list visibility
+  const actionSijil = document.getElementById('action-sijil');
+  const actionAnak = document.getElementById('action-anak');
+  
+  if (appState.currentUser.role === 'partner') {
+    if (actionSijil) actionSijil.style.display = 'flex';
+    if (actionAnak) actionAnak.style.display = 'none';
+  } else {
+    if (actionSijil) actionSijil.style.display = 'none';
+    if (actionAnak) actionAnak.style.display = 'flex';
   }
 }
 

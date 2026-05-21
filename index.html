@@ -421,10 +421,6 @@
                 <div class="wallet-main-card">
                   <div class="wallet-card-title">Baki Dompet</div>
                   <div class="wallet-card-balance" id="wallet-balance-total">RM 150.00</div>
-                  <div class="wallet-badge-row">
-                    <div class="wallet-tag-badge">Jemaah Sholeh</div>
-                    <div class="wallet-tag-badge" style="background:rgba(234,179,8,0.25); color:var(--color-gold-light);">Tahfiz Badge</div>
-                  </div>
                 </div>
 
                 <div class="form-group">
@@ -494,7 +490,7 @@
                 <div class="profile-card">
                   <div class="profile-avatar-large">🧑</div>
                   <span class="profile-name">Tengku Adrian</span>
-                  <span class="profile-tag">Pelajar Premium (Sholeh Level 3)</span>
+
 
                   <!-- Switching Double Mode -->
                   <div class="partner-mode-switch-box">
@@ -509,14 +505,14 @@
                 </div>
 
                 <div class="profile-actions-list">
-                  <div class="action-row" onclick="showToast('Sijil & tauliah anda disahkan oleh JAKIM & AgamaKu')">
+                  <div class="action-row" id="action-sijil" onclick="showToast('Sijil & tauliah anda disahkan oleh JAKIM & AgamaKu')">
                     <div class="action-row-left">
                       <i class="ri-file-shield-fill action-icon"></i>
                       <span>Kelayakan & Sijil Tauliah</span>
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
                   </div>
-                  <div class="action-row" onclick="showToast('Mengakses maklumat keluarga/anak anda')">
+                  <div class="action-row" id="action-anak" onclick="showToast('Mengakses maklumat keluarga/anak anda')">
                     <div class="action-row-left">
                       <i class="ri-group-fill action-icon"></i>
                       <span>Profil Anak & Pelajar</span>
@@ -537,7 +533,10 @@
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
                   </div>
-                  <div class="action-row" onclick="logoutUser()" style="border-top: 1px dashed rgba(239, 68, 68, 0.2); color: #ef4444; margin-top: 15px;">
+                </div>
+
+                <div class="profile-actions-list" style="margin-top: 12px;">
+                  <div class="action-row" onclick="logoutUser()" style="color: #ef4444;">
                     <div class="action-row-left">
                       <i class="ri-logout-box-r-line action-icon" style="color: #ef4444;"></i>
                       <span style="color: #ef4444; font-weight: 600;">Log Keluar (Akaun)</span>
@@ -641,9 +640,9 @@
                     <span class="stat-item-sub" id="partner-stats-week-sub">0 tugasan siap</span>
                   </div>
                   <div class="stat-item-card">
-                    <span class="stat-item-label">Kedudukan</span>
-                    <span class="stat-item-value" style="color: var(--color-gold);" id="partner-tier-val">Emas (Gold)</span>
-                    <span class="stat-item-sub" id="partner-tier-sub">Komuniti Top 10%</span>
+                    <span class="stat-item-label">Jumlah Ulasan</span>
+                    <span class="stat-item-value" style="color: var(--color-primary-light);" id="partner-tier-val">12</span>
+                    <span class="stat-item-sub" id="partner-tier-sub">Jumlah keseluruhan</span>
                   </div>
                   <div class="stat-item-card">
                     <span class="stat-item-label">Penarafan</span>
@@ -678,7 +677,10 @@
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
                   </div>
-                  <div class="action-row" onclick="logoutUser()" style="border-top: 1px dashed rgba(239, 68, 68, 0.2); color: #ef4444; margin-top: 15px;">
+                </div>
+
+                <div class="profile-actions-list" style="margin-top: 12px;">
+                  <div class="action-row" onclick="logoutUser()" style="color: #ef4444;">
                     <div class="action-row-left">
                       <i class="ri-logout-box-r-line action-icon" style="color: #ef4444;"></i>
                       <span style="color: #ef4444; font-weight: 600;">Log Keluar (Akaun Ustaz)</span>
