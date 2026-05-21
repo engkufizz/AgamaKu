@@ -272,14 +272,25 @@ const server = http.createServer(async (req, res) => {
       if (parsedUrl === '/api/teachers' && req.method === 'GET') {
         const teachers = await dbAll('SELECT * FROM teachers');
         // Parse JSON fields
-        const formattedTeachers = teachers.map(t => ({
-          ...t,
-          verified: t.verified === 1,
-          specialties: t.specialties.split(','),
-          badges: JSON.parse(t.badges),
-          coordinates: JSON.parse(t.coordinates),
-          online: t.online === 1
-        }));
+        const formattedTeachers = teachers.map(t => {
+          let coords = JSON.parse(t.coordinates);
+          // Convert old {x, y} coordinates to {lat, lng} for map compatibility
+          if (coords && coords.lat === undefined && coords.x !== undefined) {
+            // Rough conversion from 0-1 canvas relative coordinates to KL lat/lng range
+            coords = { 
+              lat: 3.1 + (coords.y * 0.1), 
+              lng: 101.6 + (coords.x * 0.2) 
+            };
+          }
+          return {
+            ...t,
+            verified: t.verified === 1,
+            specialties: t.specialties.split(','),
+            badges: JSON.parse(t.badges),
+            coordinates: coords,
+            online: t.online === 1
+          };
+        });
         return jsonResponse(res, 200, formattedTeachers);
       }
 

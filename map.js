@@ -72,7 +72,7 @@ class AgamaKuMap {
     }
 
     this.ustazMarker = L.marker([ustazPos.lat, ustazPos.lng], {
-      icon: this._createAvatarIcon(ustazPos.avatar || '👳‍♂️', true)
+      icon: this._createAvatarIcon(ustazPos.avatar || '👨‍🏫', true)
     }).addTo(this.map);
 
     // Add popup with name

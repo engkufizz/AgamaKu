@@ -1128,15 +1128,31 @@ function initJourneyMap() {
   const map = new AgamaKuMap('mapContainer', userLoc);
   appState.activeMap = map;
 
+  // Safely extract coordinates, falling back to x/y mapping or default KL coordinates if undefined
+  let lat = teacher.coordinates ? teacher.coordinates.lat : undefined;
+  let lng = teacher.coordinates ? teacher.coordinates.lng : undefined;
+  if (lat === undefined && teacher.coordinates && teacher.coordinates.x !== undefined) {
+    lat = 3.1 + (teacher.coordinates.y * 0.1);
+    lng = 101.6 + (teacher.coordinates.x * 0.2);
+  }
+  if (lat === undefined) {
+    lat = 3.1340;
+    lng = 101.6866;
+  }
+
   // Set initial coordinates of matched teacher
-  map.setUstaz({
-    lat: teacher.coordinates.lat,
-    lng: teacher.coordinates.lng,
-    avatar: teacher.avatar,
-    name: teacher.name
-  });
+  try {
+    map.setUstaz({
+      lat: lat,
+      lng: lng,
+      avatar: teacher.avatar,
+      name: teacher.name
+    });
+  } catch (e) {
+    console.error("Leaflet marker initialization error safely caught.", e);
+  }
   
-  // Bind floating details values
+  // Bind floating details values (safeguarded so it always runs)
   document.getElementById('active-job-teacher-name').textContent = teacher.name;
   document.getElementById('active-job-teacher-avatar').textContent = teacher.avatar;
   document.getElementById('active-job-teacher-phone').textContent = teacher.phone;
@@ -1241,10 +1257,15 @@ async function simulateActiveJobNextStep() {
     // Instantly teleport Ustaz to destination
     if (appState.activeMap) {
       appState.activeMap.stopSearching();
-      const avatar = booking.teacher ? booking.teacher.avatar : '👳‍♂️';
+      const avatar = booking.teacher ? booking.teacher.avatar : '👨‍🏫';
       const name = booking.teacher ? booking.teacher.name : 'Anda';
       const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
       appState.activeMap.setUstaz({ lat: userLoc.lat, lng: userLoc.lng, avatar: avatar, name: name });
+      // Force sync the DOM name in case it crashed earlier during initJourneyMap
+      if (!isPartner) {
+        const nameEl = document.getElementById('active-job-teacher-name');
+        if (nameEl && booking.teacher) nameEl.textContent = booking.teacher.name;
+      }
     }
     
     try {
@@ -2017,7 +2038,7 @@ async function acceptIncomingJob() {
       // Set driver UI configurations
       document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-navigation-line"></i> Anda Sedang Menavigasi Ke Lokasi Pelajar';
       document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Sarah Amira';
-      document.getElementById('active-job-teacher-avatar').textContent = '🧑';
+      document.getElementById('active-job-teacher-avatar').textContent = '🧑‍🎓';
       document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
       document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
       document.getElementById('active-job-eta').textContent = 'ETA: 5 min';
