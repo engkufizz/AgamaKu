@@ -4,6 +4,8 @@ Selamat datang ke **AgamaKu**! Aplikasi pintar yang direka khas untuk menghubung
 
 Misi kami adalah untuk memudahkan setiap keluarga Muslim mendapatkan bimbingan agama yang sahih, pantas, dan telus.
 
+![Paparan Utama AgamaKu](screenshot.png)
+
 ---
 
 ## 🌟 Perkhidmatan Yang Ditawarkan
