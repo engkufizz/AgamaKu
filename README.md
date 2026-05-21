@@ -1,100 +1,48 @@
-# 🕌 AgamaKu - Islamic Booking Marketplace
+# 🕌 AgamaKu - Pembelajaran Agama Di Hujung Jari Anda
 
-**AgamaKu** is a premium, mobile-first, and desktop-responsive web application serving as an **"Islamic Grab-style" booking platform**. It connects students looking for specialized religious services—such as Mengaji (Quran Recitation), Tadabbur (Quran Tafsir), Ceramah (Lectures), Tahlil, and Ruqyah—with highly qualified, verified Ustaz & Ustazah partners.
+Selamat datang ke **AgamaKu**! Aplikasi pintar yang direka khas untuk menghubungkan anda dengan Asatizah (Ustaz & Ustazah) yang bertauliah terus ke rumah anda—berfungsi persis seperti aplikasi e-hailing moden, tetapi didedikasikan khusus untuk perkhidmatan bimbingan dan keagamaan Islam.
 
-The platform is designed with a premium, high-end **Islamic HSL Emerald & Gold theme**, packed with custom animations, custom vector road networks on canvas, and in-browser sound chimes.
-
----
-
-## ✨ Key Features
-
-### 1. 📱 Dual-Mode Viewports
-- **Mobile Emulator Frame**: Renders the application in a realistic phone shell with curved corners, safe areas, and a speaker/camera notch.
-- **Widescreen Desktop Workspace**: Automatically reflows vertical layouts into a spacious **3-column horizontal grid**, scales the Canvas map side-by-side with dispatch panels, and builds a premium left navigation sidebar for desktop viewports.
-
-### 2. 🤝 Dual-Mode Architecture
-- **Student Mode**: 
-  - Browse 5 primary religious categories.
-  - Filter and search the dynamic teacher directories.
-  - View rich teacher profiles displaying verified credentials, academic backgrounds (e.g., Al-Azhar, UM), and database reviews.
-  - Lock bookings to specific teachers, automatically pre-filling services and custom hourly rates.
-- **Partner Mode (Ustaz Dashboard)**: 
-  - Toggle online/offline status.
-  - Receive real-time audio chimes for incoming classes.
-  - Accept or decline bookings, review active students, and manage ongoing classes.
-
-### 3. 🗺️ Real-time GPS Mapping Engine
-- Uses **Leaflet.js** integrated with **OpenStreetMap** to render a beautiful real-world interactive map.
-- Leverages the **Open Source Routing Machine (OSRM)** API to draw actual road geometries and calculate realistic drive times.
-- Connects to the browser's `navigator.geolocation` API to use the student's real-world GPS location as the delivery destination.
-
-### 4. 🎵 Synthesized Audio Soundscapes
-- Leverages the **Web Audio API** to synthesize beautiful major-triad acoustic chime alerts in-browser for incoming booking alerts and live chat messages. 
-- *No static MP3/WAV assets required!*
-
-### 5. 🛠️ Intelligent Development Server
-- Standard Node.js backend utilizing the native `http` module.
-- Includes a fully functional **SQLite database** to store persistent user balances, bookings, completed history, and real-time live chat messages between the Student and Partner.
-- Includes a **port fallback scan loop** (automatically tries port 3000, 3001, etc. if port is already in use).
-- Broadcasts the computer's **local network Wi-Fi IP address** in the terminal so you can scan and test the application directly on physical mobile devices!
+Misi kami adalah untuk memudahkan setiap keluarga Muslim mendapatkan bimbingan agama yang sahih, pantas, dan telus.
 
 ---
 
-## 📂 File Directory
+## 🌟 Perkhidmatan Yang Ditawarkan
 
-* **[`index.html`](index.html)**: Central semantic markup hosting all dynamic view containers (Home, Directory, Profile, Booking, Radar, Active Map, Partner Dashboard).
-* **[`styles.css`](styles.css)**: Glassmorphism tokens, emerald-to-gold HSL color palettes, phone layout wrappers, keyframes (`pulse-avatar`, `scan-line`), and responsive widescreen grid reflows.
-* **[`data.js`](data.js)**: Static database lists covering service specs, detailed teacher profiles, hourly rates, and ratings/reviews.
-* **[`map.js`](map.js)**: Wrapper engine bridging Leaflet.js tiles with Open Source Routing Machine (OSRM) GeoJSON vectors for live driving paths.
-* **[`app.js`](app.js)**: Central state machine (`appState`) managing views, dispatching matched searches, and syncing database polling states for live chat.
-* **[`server.js`](server.js)**: Node.js HTTP server utilizing a local SQLite database for data persistence and a port-scanning utility for cross-device testing.
-* **[`GEMINI.md`](GEMINI.md)**: Exhaustive engineering document outlining algorithms, database keys, and test sequences for developers and AI session agents.
+Kami menyediakan pelbagai kategori perkhidmatan mengikut keperluan rohani anda:
 
----
-
-## 🚀 How to Run & Test Locally
-
-### 1. Start the Server
-Run the local server using Node.js:
-```bash
-node server.js
-```
-The terminal will scan available ports and output access links:
-```text
-[AgamaKu Server] Running successfully!
-👉 Local URL:   http://localhost:3001
-👉 Network URL: http://192.168.1.6:3001  (Open this on your mobile phone!)
-```
-
-### 2. Access and Test
-- **Local Testing**: Open your browser and navigate to the Local URL.
-- **Physical Phone Testing**: Connect your mobile phone to the **same Wi-Fi network** as your computer, and navigate to the printed Network URL.
+- **📖 Mengaji & Tajwid**: Kelas bimbingan Al-Quran secara peribadi (Personal Coaching).
+- **💡 Tadabbur Quran**: Sesi menyelami maksud ayat-ayat suci untuk ketenangan jiwa.
+- **🗣️ Ceramah & Tazkirah**: Jemputan penceramah untuk majlis ilmu, pejabat, atau usrah keluarga.
+- **🤲 Tahlil & Doa**: Khidmat memimpin bacaan Yasin, Tahlil, dan doa selamat untuk kenduri atau arwah.
+- **✨ Ruqyah & Syifa**: Rawatan perubatan Islam dan ruqyah syari'yyah mengikut landasan syarak.
 
 ---
 
-## 🧪 Quick Test Scenarios
+## 📱 Kenapa Pilih AgamaKu?
 
-### Aliran A: Pre-Selected Locked Bookings (Student Mode)
-1. On the Homepage, scroll to *Ustaz & Ustazah Terdekat* and select **Ustazah Fatimah Az-Zahra**.
-2. Review her biography and rating scores, then click **Tempah Sekarang**.
-3. Inside the booking form, verify that the locked green header shows her name, estimated rates use her custom rate (`RM 40.00/jam`), and the general gender selector is hidden.
-4. Click **Cari Guru Sekarang**. The radar sweeps for 4 seconds and automatically matches her, starting the canvas path travel!
+### Untuk Pelajar / Keluarga (Mod Pelajar)
+- **Pilihan Guru Yang Telus**: Lihat profil penuh ustaz/ustazah, semak latar belakang pendidikan universiti (cth: Universiti Al-Azhar, UM), dan baca ulasan jujur dari pelajar lain.
+- **Tempahan Terus & Mudah**: Anda boleh membiarkan sistem memadankan anda dengan ustaz terdekat secara automatik, ATAU memilih ustaz spesifik kegemaran anda.
+- **Penjejakan Lokasi Langsung (Live GPS Tracking)**: Selepas tempahan diterima, anda boleh melihat pergerakan ustaz di atas peta secara *real-time* sehingga mereka tiba di depan pintu rumah anda!
+- **Sistem Mesej (Live Chat)**: Berkomunikasi secara terus dengan ustaz yang ditugaskan untuk memberi arahan arah jalan (landmark) atau bertanya soalan ringkas.
+- **Dompet Digital (Wallet)**: Sistem bayaran dalam aplikasi yang memudahkan transaksi tanpa tunai yang telus dan selamat.
 
-### Aliran B: Dual-Mode Partner Sync (Ustaz Zulkifli)
-1. Go to **Partner Mode** dashboard -> click **Pergi Online** (indicator turns green).
-2. Switch back to **Student Mode** -> select **Ustaz Zulkifli Harun** -> click **Tempah Sekarang** -> click **Cari Guru Sekarang**.
-3. The radar spins and plays persistent synthesized acoustic chime loops.
-4. Switch to **Partner Mode (Ustaz Dashboard)**. Click the green **Terima Tempahan** (Accept Booking) button.
-5. Switch to **Student Mode**.
-6. **Result**: Both screens are locked into the active tracking viewport showing the travel pin moving along the road network in real time!
-
----
-
-## 🛡️ Clean Workspace Configuration
-The repository includes pre-built ignore files:
-- **`.gitignore`**: Excludes `node_modules/`, logs, env secrets, and local databases.
-- **`.cursorignore` & `.windsurfignore`**: Tells modern AI agents to completely ignore workspace cache histories (`.gemini/`, `.antigravity/`, `brain/`, `scratch/`), preventing context bloat and keeping AI responses lightning fast.
+### Untuk Rakan Pembimbing (Mod Ustaz / Ustazah)
+- **Peluang Pendapatan Fleksibel**: Jana pendapatan dengan berkongsi ilmu pada masa lapang anda.
+- **Kebebasan Bekerja (On-Demand)**: Anda boleh aktifkan mod "Dalam Talian (Online)" apabila anda bersedia menerima pelajar, dan tutup profil (Offline) apabila anda sibuk.
+- **Sistem Penggera Pekerjaan**: Apabila ada tempahan masuk, telefon anda akan membunyikan deringan notifikasi. Anda mempunyai kuasa penuh untuk meneliti dan memilih untuk "Terima" atau "Tolak" tempahan tersebut.
+- **Pengurusan Profil Peribadi**: Semua rekod sejarah kelas, ulasan yang diterima, dan jumlah pendapatan harian/mingguan dikumpulkan secara teratur di dalam Papan Pemuka (Dashboard) anda.
 
 ---
 
-🕌 *AgamaKu - Connecting students with qualified Ustaz & Ustazah seamlessly.*
+## 🚀 Cara Bermula dengan AgamaKu
+
+1. **Daftar Akaun**: Buka aplikasi dan daftarkan profil anda sebagai **Pelajar** (untuk belajar) atau **Ustaz** (untuk mengajar).
+2. **Pilih Servis**: Layari direktori perkhidmatan dan pilih apa yang anda perlukan (cth: Tadabbur Quran).
+3. **Cari Guru**: Semak profil ustaz terdekat, lihat harga sejam mereka, dan klik butang **Tempah Sekarang**.
+4. **Pantau Perjalanan**: Sebaik sahaja ustaz menerima tempahan, peta penjejakan langsung akan dibuka. Anda boleh memantau perjalanan dan menganggar waktu ketibaan ustaz ke lokasi anda!
+5. **Belajar & Nilai**: Selepas kelas selesai, berikan penilaian bintang dan ulasan membina untuk membantu komuniti pengguna yang lain.
+
+---
+
+🕌 *AgamaKu - Menghidupkan sunnah dengan teknologi, mendekatkan ilmu dengan hati.*
