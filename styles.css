@@ -506,6 +506,11 @@ body {
   flex-direction: column;
   gap: 18px;
 }
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 .form-group {
   display: flex;
@@ -1663,12 +1668,23 @@ body {
   display: grid !important;
   grid-template-columns: 260px 1fr !important;
   grid-template-rows: 56px 1fr !important;
-  grid-template-areas:
+  grid-template-areas: 
     "sidebar statusbar"
     "sidebar maincontent" !important;
-  width: 100vw !important;
+  border-radius: 0 !important;
   height: 100vh !important;
   padding-top: 0 !important;
+}
+
+.screen-shell.auth-active {
+  grid-template-columns: 1fr !important;
+  grid-template-areas: 
+    "statusbar"
+    "maincontent" !important;
+}
+
+.screen-shell.auth-active .bottom-nav {
+  display: none !important;
 }
 
 .phone-status-bar {

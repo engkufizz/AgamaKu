@@ -193,6 +193,8 @@ function switchRegisterRole(roleName) {
   const roleUser = document.getElementById('role-user');
   const rolePartner = document.getElementById('role-partner');
   const teacherFields = document.getElementById('teacher-reg-fields');
+  const lblGenderL = document.getElementById('lbl-gender-l');
+  const lblGenderP = document.getElementById('lbl-gender-p');
   
   if (roleName === 'user') {
     roleUser.classList.add('active');
@@ -200,12 +202,18 @@ function switchRegisterRole(roleName) {
     teacherFields.style.display = 'none';
     const radio = roleUser.querySelector('input[type="radio"]');
     if (radio) radio.checked = true;
+    
+    if (lblGenderL) lblGenderL.textContent = 'Lelaki';
+    if (lblGenderP) lblGenderP.textContent = 'Perempuan';
   } else {
     roleUser.classList.remove('active');
     rolePartner.classList.add('active');
     teacherFields.style.display = 'block';
     const radio = rolePartner.querySelector('input[type="radio"]');
     if (radio) radio.checked = true;
+    
+    if (lblGenderL) lblGenderL.textContent = 'Lelaki (Ustaz)';
+    if (lblGenderP) lblGenderP.textContent = 'Perempuan (Ustazah)';
   }
 }
 
@@ -632,13 +640,15 @@ function startPollingActiveBookings() {
                 playSuccessChime();
                 showToast(`Berjaya dipadankan dengan ${appState.currentBooking.teacher.name}!`);
                 navigateTo('active-job-view');
-                startAutomaticTeacherMovement();
+                startTrackingTeacherLocation();
               } else if (newStatus === 'arrived') {
                 playSuccessChime();
                 showToast('Ustaz telah sampai di alamat anda!', true);
+                if (appState.activeMap && appState.activeMap.stopJourneyAnimation) appState.activeMap.stopJourneyAnimation();
                 updateJourneyUIStates();
               } else if (newStatus === 'started') {
                 showToast('Sesi kelas dimulakan!', true);
+                if (appState.activeMap && appState.activeMap.stopJourneyAnimation) appState.activeMap.stopJourneyAnimation();
                 updateJourneyUIStates();
               } else if (newStatus === 'completed') {
                 // STUDENT COMPLETION FLOW (Student reviews Ustaz)
@@ -813,6 +823,15 @@ function navigateTo(viewId) {
   if (targetView) {
     targetView.classList.add('active');
     appState.activeView = viewId;
+  }
+  
+  const shell = document.querySelector('.screen-shell');
+  if (shell) {
+    if (viewId === 'auth-view') {
+      shell.classList.add('auth-active');
+    } else {
+      shell.classList.remove('auth-active');
+    }
   }
 
   // Handle bottom navigation active state highlighting
@@ -1197,46 +1216,67 @@ function updateJourneyUIStates() {
   }
 }
 
-function startAutomaticTeacherMovement() {
+function startTrackingTeacherLocation() {
   const booking = appState.currentBooking;
   if (!booking || booking.status !== 'accepted') return;
 
-  // Animate over 12 seconds
-  setTimeout(() => {
+  // Stop any existing tracking
+  stopTrackingTeacherLocation();
+
+  // Draw the static route on the map for reference
+  setTimeout(async () => {
     if (!appState.activeMap || appState.activeView !== 'active-job-view') return;
     
     const startCoord = booking.teacher.coordinates;
     const endCoord = appState.userLocation || DEFAULT_USER_LOCATION;
-
-    appState.activeMap.animateUstazJourney(
-      startCoord, 
-      endCoord, 
-      12000, 
-      (progress) => {
-        // ETA Update
-        const etaMins = Math.ceil((1 - progress) * 8);
-        document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
-      }, 
-      () => {
-        // Arrival Trigger
-        booking.status = 'arrived';
-        DB.set('active_booking', booking);
-        
-        // Sync the updated chat history to server
-        try {
-          fetch('/api/bookings/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookingId: booking.id, chatHistory: booking.chatHistory })
-          });
-        } catch (e) {}
-
-        showToast('Ustaz telah sampai di alamat anda!', true);
-        playSuccessChime();
-        updateJourneyUIStates();
-      }
-    );
+    
+    try {
+      await appState.activeMap.drawRoute(startCoord, endCoord);
+    } catch (e) {
+      console.warn('Could not draw route:', e);
+    }
   }, 2000);
+
+  // Poll the server every 3 seconds for the driver's real GPS location
+  appState._locationPollingInterval = setInterval(async () => {
+    if (!appState.currentBooking || appState.currentBooking.status !== 'accepted') {
+      stopTrackingTeacherLocation();
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/location/${appState.currentBooking.id}`);
+      if (!res.ok) return;
+      
+      const data = await res.json();
+      if (data.success && data.location) {
+        const driverLat = data.location.lat;
+        const driverLng = data.location.lng;
+        
+        // Smoothly move the ustaz marker to the new GPS position
+        if (appState.activeMap) {
+          appState.activeMap.updateUstazPosition({ lat: driverLat, lng: driverLng });
+        }
+
+        // Calculate ETA based on real distance (rough estimate: 30 km/h average speed)
+        const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+        if (appState.activeMap) {
+          const distMeters = appState.activeMap.getDistanceMeters(driverLat, driverLng, userLoc.lat, userLoc.lng);
+          const etaMins = Math.max(1, Math.ceil(distMeters / (30000 / 60))); // 30 km/h -> meters per minute
+          document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
+        }
+      }
+    } catch (e) {
+      // Network error, silently continue polling
+    }
+  }, 3000);
+}
+
+function stopTrackingTeacherLocation() {
+  if (appState._locationPollingInterval) {
+    clearInterval(appState._locationPollingInterval);
+    appState._locationPollingInterval = null;
+  }
 }
 
 async function simulateActiveJobNextStep() {
@@ -1246,6 +1286,10 @@ async function simulateActiveJobNextStep() {
   const isPartner = appState.currentUser.role === 'partner';
 
   if (booking.status === 'accepted') {
+    // Stop GPS tracking since we're skipping the journey
+    stopDriverGPSTracking();
+    stopTrackingTeacherLocation();
+    
     // Instantly teleport Ustaz to destination
     if (appState.activeMap) {
       appState.activeMap.stopSearching();
@@ -1457,10 +1501,10 @@ function recoverActiveBooking() {
       navigateTo('active-job-view');
     }
   } else {
-    // Normal AI teacher session
+    // Normal session
     navigateTo('active-job-view');
     if (booking.status === 'accepted') {
-      startAutomaticTeacherMovement();
+      startTrackingTeacherLocation();
     }
   }
 }
@@ -2001,25 +2045,26 @@ async function acceptIncomingJob() {
       
       // Set driver UI configurations
       document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-navigation-line"></i> Anda Sedang Menavigasi Ke Lokasi Pelajar';
-      document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Sarah Amira';
+      document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Pelajar';
       document.getElementById('active-job-teacher-avatar').textContent = '🧑‍🎓';
       document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
       document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
-      document.getElementById('active-job-eta').textContent = 'ETA: 5 min';
+      document.getElementById('active-job-eta').textContent = 'Mengesan lokasi GPS...';
 
-      // Instantiate live map. User stays at location, Driver moves from candidates coords to user!
-      setTimeout(() => {
+      // Instantiate live map with the student's (destination) location
+      setTimeout(async () => {
         const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
         const map = new AgamaKuMap('mapContainer', userLoc);
         appState.activeMap = map;
         
-        // Set starting position of driver at the ustaz actual coordinates
+        // Get driver starting position from teacher coordinates
         let startCoord = DEFAULT_USER_LOCATION;
         const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
         if (teacherData && teacherData.coordinates) {
           startCoord = teacherData.coordinates;
         }
 
+        // Place driver marker at initial position
         map.setUstaz({
           lat: startCoord.lat,
           lng: startCoord.lng,
@@ -2027,34 +2072,15 @@ async function acceptIncomingJob() {
           name: 'Anda'
         });
 
-        // Animate driver moving to user over 12 seconds
-        map.animateUstazJourney(
-          startCoord,
-          userLoc,
-          12000,
-          (progress) => {
-            const etaMins = Math.ceil((1 - progress) * 5);
-            document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
-          },
-          () => {
-            // Update database so that polling doesn't overwrite it back to 'accepted'
-            fetch('/api/bookings/update-status', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ bookingId: booking.id, status: 'arrived' })
-            }).then(() => {
-              booking.status = 'arrived';
-              DB.set('active_booking', booking);
-              showToast('Anda telah sampai di destinasi!', true);
-              playSuccessChime();
-              
-              // Update driver screen details
-              document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-map-pin-user-fill"></i> Anda Telah Tiba di Lokasi';
-              document.getElementById('active-job-eta').style.display = 'none';
-              document.getElementById('simulation-skip-btn').textContent = 'Mulakan Kelas';
-            }).catch(console.error);
-          }
-        );
+        // Draw the static route for reference
+        try {
+          await map.drawRoute(startCoord, userLoc);
+        } catch (e) {
+          console.warn('Could not draw route:', e);
+        }
+
+        // Start real GPS tracking using watchPosition
+        startDriverGPSTracking(booking.id, userLoc);
 
       }, 100);
     } else {
@@ -2063,6 +2089,66 @@ async function acceptIncomingJob() {
   } catch (e) {
     console.error('Error accepting job:', e);
     showToast('Ralat rangkaian semasa menerima tugasan.', false);
+  }
+}
+// ----------------------------------------------------
+// Real-Time GPS Tracking for Driver (Ustaz/Ustazah)
+// ----------------------------------------------------
+function startDriverGPSTracking(bookingId, destinationLatLng) {
+  stopDriverGPSTracking(); // Clear any existing tracking
+
+  if (!navigator.geolocation) {
+    showToast('GPS tidak disokong pada peranti ini.', false);
+    return;
+  }
+
+  let lastSendTime = 0;
+  const SEND_INTERVAL = 3000; // Send location every 3 seconds
+
+  appState._driverWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const driverLat = position.coords.latitude;
+      const driverLng = position.coords.longitude;
+
+      // Update driver's own marker on the map
+      if (appState.activeMap) {
+        appState.activeMap.updateUstazPosition({ lat: driverLat, lng: driverLng });
+
+        // Calculate ETA based on real distance (30 km/h average)
+        const distMeters = appState.activeMap.getDistanceMeters(
+          driverLat, driverLng, destinationLatLng.lat, destinationLatLng.lng
+        );
+        const etaMins = Math.max(1, Math.ceil(distMeters / (30000 / 60)));
+        document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
+      }
+
+      // Throttle server updates to every 3 seconds
+      const now = Date.now();
+      if (now - lastSendTime >= SEND_INTERVAL) {
+        lastSendTime = now;
+        fetch('/api/location/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId, lat: driverLat, lng: driverLng })
+        }).catch(e => console.warn('Failed to send GPS location:', e));
+      }
+    },
+    (error) => {
+      console.warn('GPS error:', error.message);
+      document.getElementById('active-job-eta').textContent = 'GPS tidak aktif';
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 2000,
+      timeout: 10000
+    }
+  );
+}
+
+function stopDriverGPSTracking() {
+  if (appState._driverWatchId !== undefined && appState._driverWatchId !== null) {
+    navigator.geolocation.clearWatch(appState._driverWatchId);
+    appState._driverWatchId = null;
   }
 }
 

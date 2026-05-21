@@ -160,7 +160,13 @@ class AgamaKuMap {
     const startTime = performance.now();
     const totalPoints = routeCoords.length;
 
+    this.isJourneyAnimating = true;
     const animate = (currentTime) => {
+      if (!this.isJourneyAnimating) {
+        this.ustazMarker.setLatLng(routeCoords[totalPoints - 1]);
+        return; // stop instantly
+      }
+      
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / durationMs, 1);
       
@@ -182,6 +188,7 @@ class AgamaKuMap {
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
+        this.isJourneyAnimating = false;
         this.ustazMarker.setLatLng(routeCoords[totalPoints - 1]);
         if (onComplete) onComplete();
       }
@@ -190,7 +197,96 @@ class AgamaKuMap {
     requestAnimationFrame(animate);
   }
 
+  stopJourneyAnimation() {
+    this.isJourneyAnimating = false;
+  }
+
+  // Smoothly interpolate ustaz marker to a new GPS position (for real-time tracking)
+  updateUstazPosition(newLatLng) {
+    if (!this.ustazMarker) return;
+    
+    const currentLatLng = this.ustazMarker.getLatLng();
+    const startLat = currentLatLng.lat;
+    const startLng = currentLatLng.lng;
+    const endLat = newLatLng.lat;
+    const endLng = newLatLng.lng;
+    
+    // If the movement is very small (<1 meter), skip animation
+    const dist = this.getDistanceMeters(startLat, startLng, endLat, endLng);
+    if (dist < 1) return;
+    
+    // Smooth interpolation over 800ms
+    const duration = 800;
+    const startTime = performance.now();
+    
+    if (this._positionAnimFrame) cancelAnimationFrame(this._positionAnimFrame);
+    
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic for natural deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      
+      const lat = startLat + (endLat - startLat) * eased;
+      const lng = startLng + (endLng - startLng) * eased;
+      
+      this.ustazMarker.setLatLng([lat, lng]);
+      
+      if (progress < 1) {
+        this._positionAnimFrame = requestAnimationFrame(animate);
+      }
+    };
+    
+    this._positionAnimFrame = requestAnimationFrame(animate);
+  }
+
+  // Draw a static route polyline on the map (no marker animation)
+  async drawRoute(startLatLng, endLatLng) {
+    let routeCoords = [];
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${startLatLng.lng},${startLatLng.lat};${endLatLng.lng},${endLatLng.lat}?geometries=geojson&steps=false`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.code === 'Ok' && data.routes.length > 0) {
+        routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      } else {
+        throw new Error('No route found');
+      }
+    } catch (e) {
+      console.warn('OSRM routing failed, falling back to straight line:', e);
+      routeCoords = [
+        [startLatLng.lat, startLatLng.lng],
+        [endLatLng.lat, endLatLng.lng]
+      ];
+    }
+
+    if (this.routeLine) this.map.removeLayer(this.routeLine);
+    this.routeLine = L.polyline(routeCoords, {
+      color: '#eab308',
+      weight: 4,
+      opacity: 0.8,
+      dashArray: '10, 8'
+    }).addTo(this.map);
+
+    this.map.fitBounds(this.routeLine.getBounds(), { padding: [50, 50] });
+    return routeCoords;
+  }
+
+  // Calculate distance in meters between two lat/lng points (Haversine formula)
+  getDistanceMeters(lat1, lng1, lat2, lng2) {
+    const R = 6371000; // Earth radius in meters
+    const toRad = (deg) => deg * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
   destroy() {
+    if (this._positionAnimFrame) cancelAnimationFrame(this._positionAnimFrame);
     if (this.map) {
       this.map.remove();
       this.map = null;

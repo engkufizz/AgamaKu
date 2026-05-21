@@ -116,6 +116,16 @@ async function initDatabase() {
       )
     `);
 
+    // 5. Create Locations table for real-time GPS tracking
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS locations (
+        bookingId TEXT PRIMARY KEY,
+        lat REAL NOT NULL,
+        lng REAL NOT NULL,
+        updatedAt TEXT NOT NULL
+      )
+    `);
+
     // Ensure 'online' column exists in teachers table
     try {
       await dbRun('ALTER TABLE teachers ADD COLUMN online INTEGER DEFAULT 0');
@@ -475,7 +485,38 @@ const server = http.createServer(async (req, res) => {
         return jsonResponse(res, 200, { success: true, message: 'Akaun berjaya dipadam.' });
       }
 
-      // 10. NOT FOUND
+      // 10. UPDATE DRIVER GPS LOCATION (Real-Time Tracking)
+      if (parsedUrl === '/api/location/update' && req.method === 'POST') {
+        const body = await readJsonBody(req);
+        if (!body || !body.bookingId || body.lat === undefined || body.lng === undefined) {
+          return jsonResponse(res, 400, { success: false, message: 'Maklumat lokasi tidak lengkap.' });
+        }
+
+        const updatedAt = new Date().toISOString();
+        await dbRun(`
+          INSERT OR REPLACE INTO locations (bookingId, lat, lng, updatedAt)
+          VALUES (?, ?, ?, ?)
+        `, [body.bookingId, body.lat, body.lng, updatedAt]);
+
+        return jsonResponse(res, 200, { success: true });
+      }
+
+      // 11. GET DRIVER GPS LOCATION (Real-Time Tracking)
+      if (parsedUrl.startsWith('/api/location/') && req.method === 'GET') {
+        const bookingId = parsedUrl.split('/api/location/')[1];
+        if (!bookingId) {
+          return jsonResponse(res, 400, { success: false, message: 'Sila sertakan bookingId.' });
+        }
+
+        const location = await dbGet('SELECT * FROM locations WHERE bookingId = ?', [bookingId]);
+        if (!location) {
+          return jsonResponse(res, 404, { success: false, message: 'Lokasi tidak dijumpai.' });
+        }
+
+        return jsonResponse(res, 200, { success: true, location });
+      }
+
+      // 99. NOT FOUND
       return jsonResponse(res, 404, { success: false, message: 'API Route Not Found' });
 
     } catch (apiError) {
