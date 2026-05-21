@@ -1,6 +1,6 @@
-# 🕌 AgamaKu - Islamic Booking Marketplace Simulator
+# 🕌 AgamaKu - Islamic Booking Marketplace
 
-**AgamaKu** is a premium, mobile-first, and desktop-responsive web application simulating an **"Islamic Grab-style" booking platform**. It connects students looking for specialized religious services—such as Mengaji (Quran Recitation), Tadabbur (Quran Tafsir), Ceramah (Lectures), Tahlil, and Ruqyah—with highly qualified, verified Ustaz & Ustazah partners.
+**AgamaKu** is a premium, mobile-first, and desktop-responsive web application serving as an **"Islamic Grab-style" booking platform**. It connects students looking for specialized religious services—such as Mengaji (Quran Recitation), Tadabbur (Quran Tafsir), Ceramah (Lectures), Tahlil, and Ruqyah—with highly qualified, verified Ustaz & Ustazah partners.
 
 The platform is designed with a premium, high-end **Islamic HSL Emerald & Gold theme**, packed with custom animations, custom vector road networks on canvas, and in-browser sound chimes.
 
@@ -8,11 +8,11 @@ The platform is designed with a premium, high-end **Islamic HSL Emerald & Gold t
 
 ## ✨ Key Features
 
-### 1. 📱 Dual-Simulator Viewports
+### 1. 📱 Dual-Mode Viewports
 - **Mobile Emulator Frame**: Renders the application in a realistic phone shell with curved corners, safe areas, and a speaker/camera notch.
 - **Widescreen Desktop Workspace**: Automatically reflows vertical layouts into a spacious **3-column horizontal grid**, scales the Canvas map side-by-side with dispatch panels, and builds a premium left navigation sidebar for desktop viewports.
 
-### 2. 🤝 Dual-Mode Simulator Architecture
+### 2. 🤝 Dual-Mode Architecture
 - **Student Mode**: 
   - Browse 5 primary religious categories.
   - Filter and search the dynamic teacher directories.

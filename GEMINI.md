@@ -5,9 +5,9 @@ Welcome, AI Agent! This document provides a full, comprehensive, and detailed co
 ---
 
 ## 📌 1. Project Overview & Architecture
-**AgamaKu** is a premium, mobile-first, and desktop-responsive web application that simulates an **"Islamic Grab-style" booking marketplace**. It connects users looking for Islamic religious services (Mengaji, Tadabbur, Ceramah, Tahlil, Ruqyah) with qualified Ustaz & Ustazah partners.
+**AgamaKu** is a premium, mobile-first, and desktop-responsive web application that functions as an **"Islamic Grab-style" booking marketplace**. It connects users looking for Islamic religious services (Mengaji, Tadabbur, Ceramah, Tahlil, Ruqyah) with qualified Ustaz & Ustazah partners.
 
-The application features a **Dual-Mode Simulator**:
+The application features a **Dual-Mode Architecture**:
 1. **User Mode**: Browse services, search directories, view rich profiles with reviews, lock a booking to a specific teacher, request a class, track travel routes in real time, and chat with teachers.
 2. **Partner Mode (Ustaz Dashboard)**: Go online, listen for job alerts (with synthesized acoustic chimes), review incoming offers, accept bookings, and manage active classes.
 
