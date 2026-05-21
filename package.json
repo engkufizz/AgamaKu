@@ -1,0 +1,24 @@
+{
+  "name": "agamaku",
+  "version": "1.0.0",
+  "description": "**AgamaKu** is a premium, mobile-first, and desktop-responsive web application simulating an **\"Islamic Grab-style\" booking platform**. It connects students looking for specialized religious services—such as Mengaji (Quran Recitation), Tadabbur (Quran Tafsir), Ceramah (Lectures), Tahlil, and Ruqyah—with highly qualified, verified Ustaz & Ustazah partners.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/engkufizz/AgamaKu.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/engkufizz/AgamaKu/issues"
+  },
+  "homepage": "https://github.com/engkufizz/AgamaKu#readme",
+  "dependencies": {
+    "sqlite3": "^6.0.1"
+  }
+}

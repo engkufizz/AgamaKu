@@ -61,84 +61,15 @@ body {
 }
 
 /* ==========================================================================
-   1. Showcase Layout (Desktop presentation + phone emulator)
+   1. App Layout
    ========================================================================== */
-.showcase-container {
+.app-root {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
-  background: radial-gradient(circle at 70% 30%, #11221f 0%, #060b0a 70%);
+  background: var(--color-bg-base);
 }
 
-/* Left side Emulator Frame */
-.emulator-pane {
-  flex: 0 0 450px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  border-right: 1px solid rgba(16, 185, 129, 0.08);
-  background: linear-gradient(180deg, #091210 0%, #040807 100%);
-  padding: 20px 0;
-}
-
-.phone-emulator {
-  width: 380px;
-  height: 780px;
-  border-radius: 48px;
-  border: 12px solid #1a2926;
-  background-color: var(--color-bg-base);
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.1);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Phone notch/island */
-.phone-emulator::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 150px;
-  height: 25px;
-  background: #1a2926;
-  border-bottom-left-radius: 18px;
-  border-bottom-right-radius: 18px;
-  z-index: 1000;
-}
-
-/* Speaker & Camera inside notch */
-.phone-notch-elements {
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 140px;
-  height: 12px;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  z-index: 1001;
-  pointer-events: none;
-}
-.notch-speaker {
-  width: 40px;
-  height: 3px;
-  background: #334e48;
-  border-radius: 2px;
-}
-.notch-camera {
-  width: 6px;
-  height: 6px;
-  background: #1e3a34;
-  border-radius: 50%;
-  box-shadow: 0 0 2px #0d9488;
-}
-
-/* Screen Shell inside emulator */
 .screen-shell {
   flex: 1;
   display: flex;
@@ -146,160 +77,6 @@ body {
   height: 100%;
   position: relative;
   overflow: hidden;
-  padding-top: 25px; /* space for notch */
-}
-
-/* Status Bar */
-.phone-status-bar {
-  height: 20px;
-  padding: 0 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  font-family: var(--font-display);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  z-index: 999;
-}
-.status-bar-icons {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-/* Bottom Home Indicator */
-.phone-home-indicator {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-/* Right side showcase details */
-.showcase-pane {
-  flex: 1;
-  padding: 60px 80px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
-}
-
-.showcase-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 6px 14px;
-  border-radius: 20px;
-  color: var(--color-primary-light);
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 12px;
-  margin-bottom: 24px;
-  align-self: flex-start;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
-}
-
-.showcase-title {
-  font-family: var(--font-display);
-  font-size: 54px;
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 20px;
-  background: linear-gradient(135deg, #ffffff 30%, #34d399 70%, #fbbf24 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.showcase-desc {
-  font-size: 18px;
-  color: var(--color-text-secondary);
-  line-height: 1.6;
-  max-width: 580px;
-  margin-bottom: 40px;
-}
-
-.showcase-features-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-  max-width: 620px;
-  margin-bottom: 40px;
-}
-
-.showcase-feature-card {
-  background: var(--color-bg-panel);
-  border: var(--border-glow);
-  border-radius: 16px;
-  padding: 20px;
-  transition: all 0.3s ease;
-}
-.showcase-feature-card:hover {
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.1);
-}
-.feature-icon {
-  font-size: 24px;
-  margin-bottom: 12px;
-}
-.feature-title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-.feature-desc {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  line-height: 1.4;
-}
-
-.showcase-footer {
-  font-size: 13px;
-  color: var(--color-text-muted);
-}
-
-/* Responsive breakpoint: Hide presentation layer, stretch emulator to full screen */
-@media (max-width: 850px) {
-  .showcase-container {
-    background: var(--color-bg-base);
-  }
-  .showcase-pane {
-    display: none;
-  }
-  .emulator-pane {
-    flex: 1;
-    padding: 0;
-    border-right: none;
-    background: var(--color-bg-base);
-  }
-  .phone-emulator {
-    width: 100vw;
-    height: 100vh;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .phone-emulator::after {
-    display: none;
-  }
-  .phone-notch-elements {
-    display: none;
-  }
-  .screen-shell {
-    padding-top: 0;
-  }
 }
 
 /* ==========================================================================
@@ -490,6 +267,7 @@ body {
    ========================================================================== */
 .home-scroll-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 12px 20px;
   display: flex;
@@ -1167,6 +945,7 @@ body {
    ========================================================================== */
 .profile-scroll-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px;
   display: flex;
@@ -1363,6 +1142,7 @@ body {
    ========================================================================== */
 .partner-dash-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px;
   display: flex;
@@ -1567,6 +1347,7 @@ body {
    ========================================================================== */
 .wallet-scroll-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px;
   display: flex;
@@ -1672,11 +1453,12 @@ body {
 
 .history-scroll-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .history-item-card {
@@ -1796,16 +1578,17 @@ body {
 /* ==========================================================================
    12. Desktop Widescreen Mode Styles
    ========================================================================== */
+@media (min-width: 851px) {
 @keyframes pulseGlow {
   0% { transform: scale(0.9); box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
   100% { transform: scale(1.1); box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
 }
 
-body.desktop-widescreen-mode .showcase-pane {
+.showcase-pane {
   display: none !important;
 }
 
-body.desktop-widescreen-mode .emulator-pane {
+.emulator-pane {
   flex: 1 !important;
   width: 100vw !important;
   height: 100vh !important;
@@ -1814,7 +1597,7 @@ body.desktop-widescreen-mode .emulator-pane {
   border-right: none !important;
 }
 
-body.desktop-widescreen-mode .phone-emulator {
+.phone-emulator {
   width: 100vw !important;
   height: 100vh !important;
   max-width: none !important;
@@ -1824,19 +1607,19 @@ body.desktop-widescreen-mode .phone-emulator {
   box-shadow: none !important;
 }
 
-body.desktop-widescreen-mode .phone-emulator::after {
+.phone-emulator::after {
   display: none !important;
 }
 
-body.desktop-widescreen-mode .phone-notch-elements {
+.phone-notch-elements {
   display: none !important;
 }
 
-body.desktop-widescreen-mode .phone-home-indicator {
+.phone-home-indicator {
   display: none !important;
 }
 
-body.desktop-widescreen-mode .screen-shell {
+.screen-shell {
   display: grid !important;
   grid-template-columns: 260px 1fr !important;
   grid-template-rows: 56px 1fr !important;
@@ -1848,7 +1631,7 @@ body.desktop-widescreen-mode .screen-shell {
   padding-top: 0 !important;
 }
 
-body.desktop-widescreen-mode .phone-status-bar {
+.phone-status-bar {
   grid-area: statusbar !important;
   height: 56px !important;
   background: rgba(13, 22, 20, 0.95) !important;
@@ -1857,16 +1640,16 @@ body.desktop-widescreen-mode .phone-status-bar {
   padding: 0 30px !important;
 }
 
-body.desktop-widescreen-mode .phone-status-bar .status-bar-icons {
+.phone-status-bar .status-bar-icons {
   margin-left: auto !important;
 }
 
-body.desktop-widescreen-mode .phone-status-bar #live-clock {
+.phone-status-bar #live-clock {
   font-size: 13px !important;
   font-weight: 600 !important;
 }
 
-body.desktop-widescreen-mode .view-container {
+.view-container {
   grid-area: maincontent !important;
   background: var(--color-bg-base) !important;
   height: 100% !important;
@@ -1875,7 +1658,7 @@ body.desktop-widescreen-mode .view-container {
 }
 
 /* Sidebar morphing */
-body.desktop-widescreen-mode .bottom-nav {
+.bottom-nav {
   grid-area: sidebar !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1892,7 +1675,7 @@ body.desktop-widescreen-mode .bottom-nav {
   backdrop-filter: none !important;
 }
 
-body.desktop-widescreen-mode .nav-item {
+.nav-item {
   flex-direction: row !important;
   align-items: center !important;
   gap: 16px !important;
@@ -1907,28 +1690,28 @@ body.desktop-widescreen-mode .nav-item {
   justify-content: flex-start !important;
 }
 
-body.desktop-widescreen-mode .nav-item i {
+.nav-item i {
   font-size: 22px !important;
   transition: transform 0.2s ease !important;
 }
 
-body.desktop-widescreen-mode .nav-item.active {
+.nav-item.active {
   background: rgba(16, 185, 129, 0.08) !important;
   color: var(--color-primary-light) !important;
   border-left: 3px solid var(--color-primary) !important;
   border-radius: 0 12px 12px 0 !important;
 }
 
-body.desktop-widescreen-mode .nav-item.active::after {
+.nav-item.active::after {
   display: none !important;
 }
 
-body.desktop-widescreen-mode .nav-item:hover {
+.nav-item:hover {
   background: rgba(255, 255, 255, 0.02) !important;
   color: #ffffff !important;
 }
 
-body.desktop-widescreen-mode .emulator-only-toggle {
+.emulator-only-toggle {
   display: flex !important;
   margin-top: auto !important;
   border-top: 1px solid rgba(16, 185, 129, 0.08) !important;
@@ -1936,14 +1719,14 @@ body.desktop-widescreen-mode .emulator-only-toggle {
 }
 
 /* Inner content alignment and centering */
-body.desktop-widescreen-mode .home-scroll-area,
-body.desktop-widescreen-mode .booking-form-area,
-body.desktop-widescreen-mode .wallet-scroll-area,
-body.desktop-widescreen-mode .profile-scroll-area,
-body.desktop-widescreen-mode .partner-dash-scroll,
-body.desktop-widescreen-mode .history-scroll-area,
-body.desktop-widescreen-mode .rating-view,
-body.desktop-widescreen-mode .chat-room-container {
+.home-scroll-area,
+.booking-form-area,
+.wallet-scroll-area,
+.profile-scroll-area,
+.partner-dash-scroll,
+.history-scroll-area,
+.rating-view,
+.chat-room-container {
   max-width: 1100px !important;
   width: 100% !important;
   margin: 0 auto !important;
@@ -1952,71 +1735,71 @@ body.desktop-widescreen-mode .chat-room-container {
 }
 
 /* Beautiful grids reflow */
-body.desktop-widescreen-mode .category-grid {
+.category-grid {
   grid-template-columns: repeat(5, 1fr) !important;
   gap: 20px !important;
 }
 
-body.desktop-widescreen-mode .category-icon-wrapper {
+.category-icon-wrapper {
   width: 76px !important;
   height: 76px !important;
   font-size: 34px !important;
   border-radius: 22px !important;
 }
 
-body.desktop-widescreen-mode .category-name {
+.category-name {
   font-size: 12px !important;
 }
 
-body.desktop-widescreen-mode .featured-teachers-list {
+.featured-teachers-list {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   gap: 20px !important;
 }
 
-body.desktop-widescreen-mode .teacher-item-card {
+.teacher-item-card {
   height: 100% !important;
 }
 
-body.desktop-widescreen-mode .stats-grid {
+.stats-grid {
   grid-template-columns: repeat(4, 1fr) !important;
   gap: 20px !important;
 }
 
 /* Booking Form Reflow */
-body.desktop-widescreen-mode .booking-form-area {
+.booking-form-area {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   gap: 24px !important;
   align-content: start !important;
 }
 
-body.desktop-widescreen-mode .booking-form-area .form-group:nth-child(5),
-body.desktop-widescreen-mode .booking-form-area .form-group:nth-child(6),
-body.desktop-widescreen-mode .booking-form-area .booking-summary-box,
-body.desktop-widescreen-mode .booking-form-area button.btn-primary {
+.booking-form-area .form-group:nth-child(5),
+.booking-form-area .form-group:nth-child(6),
+.booking-form-area .booking-summary-box,
+.booking-form-area button.btn-primary {
   grid-column: span 2 !important;
 }
 
-body.desktop-widescreen-mode .booking-form-area .form-textarea {
+.booking-form-area .form-textarea {
   height: 100px !important;
 }
 
 /* Wallet Split */
-body.desktop-widescreen-mode .wallet-scroll-area {
+.wallet-scroll-area {
   display: grid !important;
   grid-template-columns: 1.2fr 1fr !important;
   gap: 30px !important;
   align-items: start !important;
 }
 
-body.desktop-widescreen-mode .wallet-scroll-area .form-group,
-body.desktop-widescreen-mode .wallet-scroll-area .quick-amount-grid,
-body.desktop-widescreen-mode .wallet-scroll-area div:last-child {
+.wallet-scroll-area .form-group,
+.wallet-scroll-area .quick-amount-grid,
+.wallet-scroll-area div:last-child {
   grid-column: 1 !important;
 }
 
-body.desktop-widescreen-mode .wallet-scroll-area .wallet-main-card {
+.wallet-scroll-area .wallet-main-card {
   grid-column: 2 !important;
   grid-row: 1 / span 4 !important;
   height: 100% !important;
@@ -2026,30 +1809,30 @@ body.desktop-widescreen-mode .wallet-scroll-area .wallet-main-card {
 }
 
 /* Profile screen centering */
-body.desktop-widescreen-mode .profile-card {
+.profile-card {
   max-width: 600px !important;
   margin: 0 auto !important;
 }
 
-body.desktop-widescreen-mode .profile-actions-list {
+.profile-actions-list {
   max-width: 600px !important;
   margin: 0 auto !important;
 }
 
 /* Interactive Dispatch Tracking View Split Screen */
-body.desktop-widescreen-mode .map-tracker-view {
+.map-tracker-view {
   flex-direction: row !important;
   height: 100% !important;
   width: 100% !important;
 }
 
-body.desktop-widescreen-mode .map-wrapper {
+.map-wrapper {
   flex: 0 0 65% !important;
   height: 100% !important;
   position: relative !important;
 }
 
-body.desktop-widescreen-mode .floating-overlay-card {
+.floating-overlay-card {
   position: relative !important;
   flex: 1 !important;
   bottom: 0 !important;
@@ -2347,3 +2130,337 @@ body.desktop-widescreen-mode .floating-overlay-card {
 }
 
 
+/* ==========================================================================
+   11. Auth Screen (Login & Register)
+   ========================================================================== */
+#auth-view {
+  background: radial-gradient(circle at 50% 15%, rgba(16, 185, 129, 0.22) 0%, rgba(2, 44, 34, 0.98) 75%, rgba(1, 15, 11, 1) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+#auth-view::before {
+  content: '';
+  position: absolute;
+  top: -15%;
+  left: -15%;
+  width: 130%;
+  height: 130%;
+  background: radial-gradient(circle at 10% 20%, rgba(234, 179, 8, 0.05) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 45%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.auth-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  z-index: 1;
+  width: 100%;
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: 5px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+.auth-brand-logo {
+  font-size: 56px;
+  color: var(--color-gold);
+  text-shadow: 0 0 25px rgba(234, 179, 8, 0.6);
+  animation: floatBrand 3.5s ease-in-out infinite alternate;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-brand-logo svg {
+  width: 64px;
+  height: 64px;
+  fill: currentColor;
+  filter: drop-shadow(0 0 15px rgba(234, 179, 8, 0.7));
+}
+
+@keyframes floatBrand {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(-8px) rotate(5deg); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-brand-title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  background: linear-gradient(to right, #ffffff 30%, var(--color-gold-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  margin-bottom: 4px;
+}
+
+.auth-brand-subtitle {
+  font-size: 12px;
+  color: #a7f3d0;
+  opacity: 0.9;
+  letter-spacing: 0.8px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(3, 37, 29, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(234, 179, 8, 0.28);
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 
+              0 0 30px rgba(16, 185, 129, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(1, 28, 20, 0.6);
+  border-radius: 14px;
+  padding: 4px;
+  border: 1px solid rgba(234, 179, 8, 0.18);
+}
+
+.auth-tab {
+  padding: 10px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-tab:hover {
+  color: #ffffff;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.auth-tab.active {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: #ffffff;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 13.5px;
+  font-weight: 800;
+  border-radius: 12px;
+  margin-top: 20px;
+  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-dark));
+  color: #010f0b !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 5px 15px rgba(234, 179, 8, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+}
+
+.auth-submit-btn:hover {
+  background: linear-gradient(135deg, #fcd34d, var(--color-gold));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(234, 179, 8, 0.45);
+}
+
+.auth-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* Auth Role toggles */
+.auth-role-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.role-option {
+  padding: 12px;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.18);
+  background: rgba(1, 28, 20, 0.4);
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.role-option:hover {
+  background: rgba(1, 28, 20, 0.6);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #ffffff;
+}
+
+.role-option.active {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(16, 185, 129, 0.1));
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+  box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
+  transform: scale(1.02);
+}
+
+/* specialty tags for teachers */
+.specialty-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.specialty-check-tag {
+  background: rgba(1, 28, 20, 0.4);
+  border: 1px solid rgba(234, 179, 8, 0.18);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.specialty-check-tag:hover {
+  background: rgba(1, 28, 20, 0.6);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #ffffff;
+}
+
+.specialty-check-tag:has(input:checked) {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.18);
+}
+
+.specialty-check-tag input[type="checkbox"] {
+  accent-color: var(--color-gold);
+  cursor: pointer;
+}
+
+/* Gender radio buttons */
+.gender-radio-group {
+  display: flex;
+  gap: 20px;
+}
+
+.gender-radio-option {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.gender-radio-option:hover {
+  color: #ffffff;
+}
+
+.gender-radio-option input[type="radio"] {
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* Premium Glassmorphic Input Elements */
+#auth-view input[type="text"],
+#auth-view input[type="password"],
+#auth-view input[type="number"],
+#auth-view textarea {
+  width: 100%;
+  background: rgba(1, 28, 20, 0.6);
+  border: 1px solid rgba(234, 179, 8, 0.22);
+  color: #ffffff;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#auth-view input[type="text"]::placeholder,
+#auth-view input[type="password"]::placeholder,
+#auth-view input[type="number"]::placeholder,
+#auth-view textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+#auth-view input[type="text"]:focus,
+#auth-view input[type="password"]:focus,
+#auth-view input[type="number"]:focus,
+#auth-view textarea:focus {
+  border-color: var(--color-gold);
+  background: rgba(1, 28, 20, 0.85);
+  box-shadow: 0 0 16px rgba(234, 179, 8, 0.4), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+#auth-view label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--color-gold-light);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+[class*="-scroll-area"],
+.partner-dash-scroll,
+.showcase-pane {
+  -webkit-overflow-scrolling: touch;
+}
+
+}

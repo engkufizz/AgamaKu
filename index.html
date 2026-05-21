@@ -5,48 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AgamaKu - Aplikasi Tempahan Ustaz & Ustazah Mudah Alih</title>
   <meta name="description" content="Tempah perkhidmatan Ustaz dan Ustazah bertauliah untuk Mengaji, Tadabbur, Ceramah, Doa Selamat, dan Ruqyah terus ke rumah anda dengan AgamaKu.">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1.4">
   <!-- Remix Icons for gorgeous crisp modern iconography -->
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 </head>
 <body>
 
-  <!-- 
-    Desktop Showcase Presentation Container
-    On mobile screens, the .showcase-pane is hidden, and the .emulator-pane fills 100% of the screen.
-  -->
-  <div class="showcase-container">
-    
-    <!-- Left Side: Interactive Phone Emulator -->
-    <div class="emulator-pane">
-      <div class="phone-emulator">
-        <div class="phone-notch-elements">
-          <div class="notch-speaker"></div>
-          <div class="notch-camera"></div>
-        </div>
-        
-        <div class="screen-shell">
-          <!-- Live Status Bar -->
-          <div class="phone-status-bar">
-            <span id="live-clock">16:45</span>
-            
-            <!-- Desktop Widescreen Controls -->
-            <div class="desktop-topbar-controls" id="desktop-topbar-controls" style="display: none; align-items: center; gap: 14px;">
-              <span style="color: var(--color-primary-light); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; display: inline-block; animation: pulseGlow 1.5s infinite alternate;"></span>
-                Mod Desktop Aktif
-              </span>
-              <button onclick="toggleDesktopWidescreen(false)" style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.25); color: var(--color-gold-light); font-family: var(--font-display); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                <i class="ri-phone-fill"></i> Mod Telefon
-              </button>
-            </div>
-
-            <div class="status-bar-icons">
-              <i class="ri-signal-tower-fill"></i>
-              <i class="ri-wifi-fill"></i>
-              <i class="ri-battery-2-charge-fill" style="color: var(--color-primary-light);"></i>
-            </div>
-          </div>
+  <div class="app-root">
+    <div class="screen-shell">
 
           <!-- Toast Notifications -->
           <div id="app-toast" class="toast-notification">
@@ -57,8 +23,128 @@
           <!-- Main View Holder -->
           <div class="view-container">
 
+            <!-- 0. AUTH VIEW (LOGIN & REGISTER) -->
+            <div id="auth-view" class="view active">
+              <div class="auth-scroll-area">
+                <div class="auth-brand">
+                  <div class="auth-brand-logo">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11 2C5.48 2 1 6.48 1 12s4.48 10 10 10c1.7 0 3.32-.42 4.75-1.16C11.82 20.35 9 16.5 9 12s2.82-8.35 6.75-8.84C14.32 2.42 12.7 2 11 2z"/>
+                      <path d="M18.5 7.5l.8 2.4h2.5l-2 1.5.8 2.4-2.1-1.5-2.1 1.5.8-2.4-2-1.5h2.5z"/>
+                    </svg>
+                  </div>
+                  <h2 class="auth-brand-title">AgamaKu</h2>
+                  <p class="auth-brand-subtitle">Pembelajaran Agama Di Hujung Jari Anda</p>
+                </div>
+
+                <div class="auth-card">
+                  <!-- Tab Selector -->
+                  <div class="auth-tabs">
+                    <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Masuk</div>
+                    <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Daftar</div>
+                  </div>
+
+                  <!-- Login Form -->
+                  <form id="form-login" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                      <label for="login-username"><i class="ri-user-fill"></i> Nama Pengguna</label>
+                      <input type="text" id="login-username" placeholder="Masukkan nama pengguna..." required>
+                    </div>
+                    <div class="form-group">
+                      <label for="login-password"><i class="ri-lock-fill"></i> Kata Laluan</label>
+                      <input type="password" id="login-password" placeholder="Masukkan kata laluan..." required>
+                    </div>
+                    <button type="submit" class="btn-primary auth-submit-btn">Masuk Sekarang</button>
+                  </form>
+
+                  <!-- Register Form -->
+                  <form id="form-register" onsubmit="handleRegister(event)" style="display: none;">
+                    <div class="form-group">
+                      <label for="reg-fullname"><i class="ri-contacts-fill"></i> Nama Penuh</label>
+                      <input type="text" id="reg-fullname" placeholder="Masukkan nama penuh..." required>
+                    </div>
+                    <div class="form-group">
+                      <label for="reg-username"><i class="ri-user-fill"></i> Nama Pengguna (Username)</label>
+                      <input type="text" id="reg-username" placeholder="Satu perkataan, e.g. ahmad..." required>
+                    </div>
+                    <div class="form-group">
+                      <label for="reg-password"><i class="ri-lock-fill"></i> Kata Laluan</label>
+                      <input type="password" id="reg-password" placeholder="Masukkan kata laluan..." required>
+                    </div>
+                    <div class="form-group">
+                      <label><i class="ri-shield-user-fill"></i> Peranan Akaun</label>
+                      <div class="auth-role-toggle">
+                        <label class="role-option active" id="role-user" onclick="switchRegisterRole('user')">
+                          <input type="radio" name="reg-role" value="user" checked style="display:none;">
+                          <span>Pelajar</span>
+                        </label>
+                        <label class="role-option" id="role-partner" onclick="switchRegisterRole('partner')">
+                          <input type="radio" name="reg-role" value="partner" style="display:none;">
+                          <span>Ustaz</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label><i class="ri-genderless-fill"></i> Jantina</label>
+                      <div class="gender-radio-group">
+                        <label class="gender-radio-option">
+                          <input type="radio" name="reg-gender" value="L" checked> Lelaki (Ustaz)
+                        </label>
+                        <label class="gender-radio-option">
+                          <input type="radio" name="reg-gender" value="P"> Perempuan (Ustazah)
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Extra fields for Ustaz registration (Slides open dynamically) -->
+                    <div id="teacher-reg-fields" style="display: none; border-top: 1px dashed rgba(234, 179, 8, 0.2); padding-top: 15px; margin-top: 15px;">
+                      <h4 style="font-family: var(--font-display); font-size: 13px; color: var(--color-gold); margin-bottom: 10px;">Setup Ustaz & Ustazah</h4>
+                      
+                      <div class="form-group">
+                        <label><i class="ri-book-open-fill"></i> Bidang Kepakaran (Pilih semua)</label>
+                        <div class="specialty-checkboxes">
+                          <label class="specialty-check-tag">
+                            <input type="checkbox" name="reg-specialties" value="mengaji" checked> Mengaji
+                          </label>
+                          <label class="specialty-check-tag">
+                            <input type="checkbox" name="reg-specialties" value="tadabbur"> Tadabbur
+                          </label>
+                          <label class="specialty-check-tag">
+                            <input type="checkbox" name="reg-specialties" value="ceramah"> Ceramah
+                          </label>
+                          <label class="specialty-check-tag">
+                            <input type="checkbox" name="reg-specialties" value="tahlil"> Tahlil
+                          </label>
+                          <label class="specialty-check-tag">
+                            <input type="checkbox" name="reg-specialties" value="ruqyah"> Ruqyah
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="form-group">
+                        <label for="reg-rate"><i class="ri-money-dollar-box-fill"></i> Kadar Jam (RM/jam)</label>
+                        <input type="number" id="reg-rate" min="20" max="200" value="35" placeholder="RM per jam...">
+                      </div>
+
+                      <div class="form-group">
+                        <label for="reg-phone"><i class="ri-phone-fill"></i> Nombor Telefon</label>
+                        <input type="text" id="reg-phone" value="+60 12-345 6789" placeholder="Masukkan nombor telefon...">
+                      </div>
+
+                      <div class="form-group">
+                        <label for="reg-bio"><i class="ri-file-text-fill"></i> Pengenalan Diri / Bio Akademik</label>
+                        <textarea id="reg-bio" rows="3" placeholder="Contoh: Lulusan Al-Azhar, berpengalaman mengajar..." style="width: 100%; background: rgba(5, 46, 22, 0.6); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 8px; color: #ffffff; padding: 10px; font-family: var(--font-body); font-size: 12px; resize: none;"></textarea>
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary auth-submit-btn" style="margin-top: 15px;">Daftar Akaun Baru</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
             <!-- 1. USER HOME VIEW -->
-            <div id="home-view" class="view active">
+            <div id="home-view" class="view">
               <div class="app-header">
                 <div class="user-profile-header">
                   <div class="header-avatar" id="home-avatar">🧑</div>
@@ -413,7 +499,7 @@
                   <!-- Switching Double Mode -->
                   <div class="partner-mode-switch-box">
                     <div class="mode-switch-info">
-                      <span class="mode-switch-label">Mod Ustaz Partner</span>
+                      <span class="mode-switch-label">Mod Ustaz</span>
                       <span class="mode-switch-sub">Kongsi ilmu & terima bayaran</span>
                     </div>
                     <div class="switch-toggle-btn" id="mode-switch-toggle" onclick="toggleDualMode()">
@@ -451,6 +537,19 @@
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
                   </div>
+                  <div class="action-row" onclick="logoutUser()" style="border-top: 1px dashed rgba(239, 68, 68, 0.2); color: #ef4444; margin-top: 15px;">
+                    <div class="action-row-left">
+                      <i class="ri-logout-box-r-line action-icon" style="color: #ef4444;"></i>
+                      <span style="color: #ef4444; font-weight: 600;">Log Keluar (Akaun)</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow" style="color: #ef4444;"></i>
+                  </div>
+                  <div class="action-row" onclick="deleteUserAccount()" style="color: #ef4444;">
+                    <div class="action-row-left">
+                      <i class="ri-delete-bin-fill action-icon" style="color: #ef4444;"></i>
+                      <span style="color: #ef4444; font-weight: 600;">Padam Akaun Secara Kekal</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -461,8 +560,8 @@
                 <div class="user-profile-header">
                   <div class="header-avatar" style="background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold));" id="partner-avatar">👳‍♂️</div>
                   <div class="user-info">
-                    <span class="user-greeting">Ustaz Partner,</span>
-                    <span class="user-name" id="partner-user-name">Ustaz Zulkifli Harun</span>
+                    <span class="user-greeting">Ustaz,</span>
+                    <span class="user-name" id="partner-name">Ustaz Zulkifli Harun</span>
                   </div>
                 </div>
                 <div class="wallet-badge" onclick="navigateTo('wallet-view')">
@@ -517,7 +616,7 @@
                 <!-- Online Toggle Banner -->
                 <div class="partner-status-header-card">
                   <div class="status-label-column">
-                    <span class="partner-status-title">Status Ketersediaan</span>
+                    <span class="partner-status-title">Terima Tempahan</span>
                     <span class="partner-status-status" id="partner-online-status-lbl">Luar Talian (Offline)</span>
                   </div>
                   <!-- Availability Toggle -->
@@ -534,28 +633,28 @@
                   <div class="stat-item-card">
                     <span class="stat-item-label">Hari Ini</span>
                     <span class="stat-item-value green" id="partner-stats-today">RM 0.00</span>
-                    <span class="stat-item-sub">0 tugasan siap</span>
+                    <span class="stat-item-sub" id="partner-stats-today-sub">0 tugasan siap</span>
                   </div>
                   <div class="stat-item-card">
                     <span class="stat-item-label">Minggu Ini</span>
-                    <span class="stat-item-value" id="partner-stats-week">RM 245.00</span>
-                    <span class="stat-item-sub">5 tugasan siap</span>
+                    <span class="stat-item-value" id="partner-stats-week">RM 0.00</span>
+                    <span class="stat-item-sub" id="partner-stats-week-sub">0 tugasan siap</span>
                   </div>
                   <div class="stat-item-card">
                     <span class="stat-item-label">Kedudukan</span>
-                    <span class="stat-item-value" style="color: var(--color-gold);">Emas (Gold)</span>
-                    <span class="stat-item-sub">Komuniti Top 10%</span>
+                    <span class="stat-item-value" style="color: var(--color-gold);" id="partner-tier-val">Emas (Gold)</span>
+                    <span class="stat-item-sub" id="partner-tier-sub">Komuniti Top 10%</span>
                   </div>
                   <div class="stat-item-card">
                     <span class="stat-item-label">Penarafan</span>
-                    <span class="stat-item-value">⭐ 4.93</span>
-                    <span class="stat-item-sub">Dari 54 maklum balas</span>
+                    <span class="stat-item-value" id="partner-rating-val">⭐ 5.0</span>
+                    <span class="stat-item-sub" id="partner-rating-count">Dari 0 maklum balas</span>
                   </div>
                 </div>
 
                 <!-- Partner action utilities list -->
                 <div class="section-title">
-                  <span>Utiliti Rakan Kongsi</span>
+                  <span>Utiliti Ustaz</span>
                 </div>
                 <div class="profile-actions-list">
                   <div class="action-row" onclick="showToast('Konfigurasi yuran pembelajaran anda')">
@@ -578,6 +677,19 @@
                       <span>Kembali ke Profil Pengguna</span>
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
+                  </div>
+                  <div class="action-row" onclick="logoutUser()" style="border-top: 1px dashed rgba(239, 68, 68, 0.2); color: #ef4444; margin-top: 15px;">
+                    <div class="action-row-left">
+                      <i class="ri-logout-box-r-line action-icon" style="color: #ef4444;"></i>
+                      <span style="color: #ef4444; font-weight: 600;">Log Keluar (Akaun Ustaz)</span>
+                    </div>
+                    <i class="ri-arrow-right-s-line action-arrow" style="color: #ef4444;"></i>
+                  </div>
+                  <div class="action-row" onclick="deleteUserAccount()" style="color: #ef4444;">
+                    <div class="action-row-left">
+                      <i class="ri-delete-bin-fill action-icon" style="color: #ef4444;"></i>
+                      <span style="color: #ef4444; font-weight: 600;">Padam Akaun Secara Kekal</span>
+                    </div>
                   </div>
                 </div>
 
@@ -604,71 +716,9 @@
               <i class="ri-user-fill"></i>
               <span>Profil</span>
             </div>
-            <!-- Mod Telefon return toggle (Visible only on widescreen sidebar bottom) -->
-            <div class="nav-item emulator-only-toggle" onclick="toggleDesktopWidescreen(false)" style="margin-top: auto; display: none;">
-              <i class="ri-phone-line" style="color: var(--color-gold);"></i>
-              <span style="color: var(--color-gold-light);">Mod Telefon</span>
-            </div>
           </div>
-
-          <!-- Bottom Home Indicator -->
-          <div class="phone-home-indicator"></div>
-
         </div> <!-- Screen Shell End -->
-      </div> <!-- Phone emulator end -->
-    </div> <!-- Emulator pane end -->
-
-    <!-- Right Side: Beautiful Interactive Presentation Showcase Panel -->
-    <div class="showcase-pane">
-      <div class="showcase-badge">
-        <i class="ri-sparkling-fill"></i> Aplikasi Inovatif AgamaKu v1.2
-      </div>
-      <h1 class="showcase-title">Aplikasi Grab Perkhidmatan Agama Pertama Malaysia</h1>
-      <p class="showcase-desc">
-        Hubungkan ustaz & ustazah bertauliah ke rumah anda semudah menempah kenderaan. Direka khas secara mobile-first, AgamaKu membawakan ketenangan minda pembelajaran agama bagi keluarga moden.
-      </p>
-
-      <!-- Desktop Mode Call-to-Action -->
-      <div class="showcase-desktop-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(234, 179, 8, 0.04) 100%); border: var(--border-glow); border-radius: 20px; padding: 24px; margin-bottom: 30px; position: relative; overflow: hidden; box-shadow: var(--shadow-premium);">
-        <div style="position: absolute; right: -10px; bottom: -20px; font-size: 80px; opacity: 0.03; color: #ffffff;">💻</div>
-        <h3 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #ffffff; display: flex; align-items: center; gap: 8px;">
-          <i class="ri-computer-line" style="color: var(--color-primary-light);"></i> Paparan Widescreen Desktop
-        </h3>
-        <p style="font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 16px; max-width: 480px;">
-          Gunakan susun atur dashboard premium yang direka khusus untuk pengguna komputer. Peta vector live, borang tempahan, dan ruangan sembang akan berkembang secara visual.
-        </p>
-        <button class="btn-primary" onclick="toggleDesktopWidescreen(true)" style="padding: 10px 18px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
-          <i class="ri-window-line"></i> Gunakan Paparan Desktop
-        </button>
-      </div>
-
-      <div class="showcase-features-grid">
-        <div class="showcase-feature-card">
-          <div class="feature-icon">📖</div>
-          <div class="feature-title">Pilihan Pengajian Lengkap</div>
-          <div class="feature-desc">Dari asas mengaji tajwid kanak-kanak sehingga tadabbur quran dewasa.</div>
-        </div>
-        <div class="showcase-feature-card">
-          <div class="feature-icon">👳‍♂️</div>
-          <div class="feature-title">Rakan Ustaz Bertauliah</div>
-          <div class="feature-desc">Kesemua pengajar melalui saringan kelayakan & pendaftaran tauliah rasmi (JAKIM/JAWI).</div>
-        </div>
-        <div class="showcase-feature-card">
-          <div class="feature-icon">🗺️</div>
-          <div class="feature-title">Pemetaan Vektor Live</div>
-          <div class="feature-desc">Perhatikan pergerakan guru mengaji secara langsung di peta live vector interaktif.</div>
-        </div>
-        <div class="showcase-feature-card">
-          <div class="feature-icon">💳</div>
-          <div class="feature-title">AgamaKu Pay Seamless</div>
-          <div class="feature-desc">Urus baki dompet pembelajaran, top-up tunai, serta transaksi hasil secara telus.</div>
-        </div>
-      </div>
-
-      <div class="showcase-footer">
-        <p>© 2026 AgamaKu Inc. Hak Cipta Terpelihara. Dibina secara eksklusif dengan HSL Emerald UI.</p>
-      </div>
-    </div> <!-- Showcase pane end -->
+      </div> <!-- app-root end -->
 
     <!-- Double Mode Switching Transitional Overlay Screen -->
     <div class="mode-switch-screen-overlay" id="mode-switch-overlay">
@@ -676,11 +726,9 @@
       <div class="transition-label" id="mode-switch-overlay-label">Menukar Mod...</div>
     </div>
 
-  </div> <!-- Showcase container end -->
-
   <!-- Load script files (Dependencies logic) -->
-  <script src="data.js"></script>
-  <script src="map.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=1.4"></script>
+  <script src="map.js?v=1.4"></script>
+  <script src="app.js?v=1.4"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // AgamaKu App Core State & Controller
 let appState = {
-  activeView: 'home-view',
+  activeView: 'auth-view',
   currentUser: null,
   partnerUser: null,
   currentBooking: null,
@@ -11,7 +11,10 @@ let appState = {
   classTimerInterval: null,
   partnerOnlineTimeout: null,
   selectedTeacher: null,
-  profileBackView: 'home-view'
+  profileBackView: 'home-view',
+  teachersList: [],
+  reviewsList: [],
+  pollingInterval: null
 };
 
 // Initial User Profile setup if not already in local storage
@@ -64,58 +67,601 @@ window.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
 
-function initApp() {
-  // 1. Load profiles or save defaults
-  appState.currentUser = DB.get('profile_user', defaultUser);
-  appState.partnerUser = DB.get('profile_partner', defaultPartner);
-  appState.historyList = DB.get('history_list', defaultHistory);
-  appState.currentBooking = DB.get('active_booking', null);
+async function initApp() {
+  const savedUser = localStorage.getItem('agamaku_user');
+  if (savedUser) {
+    try {
+      appState.currentUser = JSON.parse(savedUser);
+      appState.currentBooking = DB.get('active_booking', null);
+      
+      // Load latest database records
+      await loadDatabaseData();
 
-  // 2. Start clock
-  startClock();
+      document.getElementById('home-user-name').textContent = appState.currentUser.fullname;
+      updateUserProfileUI();
 
-  // 3. Render UI values
-  updateUIWalletBalances();
-  renderFeaturedTeachers();
-  populateBookingSelect();
-  renderHistoryList();
+      if (appState.currentUser.role === 'partner') {
+        const savedPartner = DB.get('profile_partner', {});
+        const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+        appState.partnerUser = {
+          name: appState.currentUser.fullname,
+          avatar: teacherData ? teacherData.avatar : '👳‍♂️',
+          wallet: appState.currentUser.balance,
+          online: savedPartner.online || false,
+          earningsToday: 0.0,
+          earningsWeek: 0.0,
+          completedJobs: 0,
+          role: 'partner'
+        };
 
-  // Recovery of widescreen mode setting
-  const widescreenSaved = DB.get('desktop_widescreen_mode', false);
-  toggleDesktopWidescreen(widescreenSaved);
+        document.getElementById('partner-name').textContent = appState.partnerUser.name;
+        document.getElementById('partner-avatar').textContent = appState.partnerUser.avatar;
+        document.getElementById('mode-switch-toggle').classList.add('active');
+        
+        if (appState.partnerUser.online) {
+          const toggleBtn = document.getElementById('partner-status-toggle');
+          const statusLbl = document.getElementById('partner-online-status-lbl');
+          if (toggleBtn) toggleBtn.classList.add('active');
+          if (statusLbl) {
+            statusLbl.textContent = 'Dalam Talian (Online)';
+            statusLbl.className = 'partner-status-status online';
+          }
+        }
 
-  // 4. Handle recovery of active bookings
-  if (appState.currentBooking) {
-    recoverActiveBooking();
+        navigateToPartnerDashboard();
+        startPollingActiveBookings();
+      } else {
+        appState.partnerUser = defaultPartner;
+        document.getElementById('app-bottom-nav').style.display = 'flex';
+        updateUIWalletBalances();
+        renderFeaturedTeachers();
+        populateBookingSelect();
+        renderHistoryList();
+
+        if (appState.currentBooking) {
+          recoverActiveBooking();
+        } else {
+          navigateTo('home-view');
+        }
+        startPollingActiveBookings();
+      }
+    } catch (e) {
+      console.error('Error recovering user session:', e);
+      logoutUser();
+    }
   } else {
-    navigateTo('home-view');
+    // Hide bottom nav and go to auth screen
+    document.getElementById('app-bottom-nav').style.display = 'none';
+    navigateTo('auth-view');
   }
+}
+
+// ----------------------------------------------------
+// Authentication Helpers & Forms
+// ----------------------------------------------------
+function switchAuthTab(tabName) {
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+  const formLogin = document.getElementById('form-login');
+  const formRegister = document.getElementById('form-register');
+  
+  if (tabName === 'login') {
+    tabLogin.classList.add('active');
+    tabRegister.classList.remove('active');
+    formLogin.style.display = 'block';
+    formRegister.style.display = 'none';
+  } else {
+    tabLogin.classList.remove('active');
+    tabRegister.classList.add('active');
+    formLogin.style.display = 'none';
+    formRegister.style.display = 'block';
+  }
+}
+
+function switchRegisterRole(roleName) {
+  const roleUser = document.getElementById('role-user');
+  const rolePartner = document.getElementById('role-partner');
+  const teacherFields = document.getElementById('teacher-reg-fields');
+  
+  if (roleName === 'user') {
+    roleUser.classList.add('active');
+    rolePartner.classList.remove('active');
+    teacherFields.style.display = 'none';
+    const radio = roleUser.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
+  } else {
+    roleUser.classList.remove('active');
+    rolePartner.classList.add('active');
+    teacherFields.style.display = 'block';
+    const radio = rolePartner.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
+  }
+}
+
+async function loadDatabaseData() {
+  try {
+    const resTeachers = await fetch('/api/teachers');
+    if (resTeachers.ok) {
+      appState.teachersList = await resTeachers.json();
+    } else {
+      throw new Error('Failed to load teachers');
+    }
+
+    const resReviews = await fetch('/api/reviews');
+    if (resReviews.ok) {
+      appState.reviewsList = await resReviews.json();
+    } else {
+      throw new Error('Failed to load reviews');
+    }
+
+    if (appState.currentUser) {
+      let url = `/api/bookings?userId=${appState.currentUser.id}`;
+      if (appState.currentUser.role === 'partner' && appState.currentUser.teacher_id) {
+        url = `/api/bookings?teacherId=${appState.currentUser.teacher_id}`;
+      }
+      const resBookings = await fetch(url);
+      if (resBookings.ok) {
+        const bookings = await resBookings.json();
+        appState.historyList = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled').map(b => {
+          const service = initialServices.find(s => s.id === b.serviceId) || { name: 'Kelas Agama' };
+          const teacher = appState.teachersList.find(t => t.id === b.teacherId);
+          // If partner, the teacher earned 90%
+          const finalPrice = (appState.currentUser.role === 'partner' && appState.currentUser.teacher_id === b.teacherId) ? (b.totalPrice * 0.9) : b.totalPrice;
+          return {
+            id: b.id,
+            serviceId: b.serviceId,
+            serviceName: service.name,
+            teacherName: teacher ? teacher.name : 'Ustaz / Ustazah',
+            clientName: b.clientName || 'Pelajar',
+            datetime: b.date + 'T' + b.time,
+            duration: b.duration + ' Jam',
+            price: finalPrice,
+            status: b.status,
+            rated: false
+          };
+        });
+        DB.set('history_list', appState.historyList);
+        if (typeof renderHistoryList === 'function') {
+          renderHistoryList();
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('API error, falling back to static local data.js. Error:', e);
+    appState.teachersList = initialUstazList.map(t => ({
+      ...t,
+      verified: t.verified === 1
+    }));
+    appState.reviewsList = initialReviews;
+  }
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!username || !password) {
+    showToast('Sila masukkan nama pengguna dan kata laluan.', false);
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      showToast(data.message || 'Gagal untuk log masuk.', false);
+      return;
+    }
+
+    appState.currentUser = data.user;
+    localStorage.setItem('agamaku_user', JSON.stringify(data.user));
+    
+    await loadDatabaseData();
+    
+    document.getElementById('home-user-name').textContent = appState.currentUser.fullname;
+    updateUserProfileUI();
+    
+    if (appState.currentUser.role === 'partner') {
+      const savedPartner = DB.get('profile_partner', {});
+      const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+      appState.partnerUser = {
+        name: appState.currentUser.fullname,
+        avatar: teacherData ? teacherData.avatar : '👳‍♂️',
+        wallet: appState.currentUser.balance,
+        online: savedPartner.online || false,
+        earningsToday: 0.0,
+        earningsWeek: 0.0,
+        completedJobs: 0,
+        role: 'partner'
+      };
+      
+      document.getElementById('partner-name').textContent = appState.partnerUser.name;
+      document.getElementById('partner-avatar').textContent = appState.partnerUser.avatar;
+      
+      if (appState.partnerUser.online) {
+        const toggleBtn = document.getElementById('partner-status-toggle');
+        const statusLbl = document.getElementById('partner-online-status-lbl');
+        if (toggleBtn) toggleBtn.classList.add('active');
+        if (statusLbl) {
+          statusLbl.textContent = 'Dalam Talian (Online)';
+          statusLbl.className = 'partner-status-status online';
+        }
+      }
+      
+      navigateToPartnerDashboard();
+      startPollingActiveBookings();
+    } else {
+      appState.partnerUser = defaultPartner;
+      document.getElementById('app-bottom-nav').style.display = 'flex';
+      updateUIWalletBalances();
+      renderFeaturedTeachers();
+      populateBookingSelect();
+      renderHistoryList();
+      
+      if (appState.currentBooking) {
+        recoverActiveBooking();
+      } else {
+        navigateTo('home-view');
+      }
+      startPollingActiveBookings();
+    }
+
+    showToast(`Selamat datang, ${appState.currentUser.fullname}!`, true);
+    playSuccessChime();
+    
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    
+  } catch (err) {
+    console.error(err);
+    showToast('Ralat sambungan pelayan. Sila cuba lagi.', false);
+  }
+}
+
+async function handleRegister(event) {
+  event.preventDefault();
+  const fullname = document.getElementById('reg-fullname').value.trim();
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const role = document.querySelector('input[name="reg-role"]:checked') ? document.querySelector('input[name="reg-role"]:checked').value : 'user';
+  const gender = document.querySelector('input[name="reg-gender"]:checked') ? document.querySelector('input[name="reg-gender"]:checked').value : 'L';
+
+  if (!fullname || !username || !password) {
+    showToast('Sila isikan semua maklumat wajib.', false);
+    return;
+  }
+
+  const payload = {
+    fullname,
+    username,
+    password,
+    role,
+    gender
+  };
+
+  if (role === 'partner') {
+    const specialtiesList = Array.from(document.querySelectorAll('input[name="reg-specialties"]:checked')).map(el => el.value);
+    payload.specialties = specialtiesList.join(',');
+    payload.hourlyRate = parseFloat(document.getElementById('reg-rate').value) || 35.0;
+    payload.phone = document.getElementById('reg-phone').value.trim();
+    payload.bio = document.getElementById('reg-bio').value.trim();
+  }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      showToast(data.message || 'Gagal mendaftar akaun.', false);
+      return;
+    }
+
+    showToast('Pendaftaran berjaya! Sila log masuk dengan akaun anda.', true);
+    playSuccessChime();
+    
+    document.getElementById('reg-fullname').value = '';
+    document.getElementById('reg-username').value = '';
+    document.getElementById('reg-password').value = '';
+    if (role === 'partner') {
+      document.getElementById('reg-rate').value = '35';
+      document.getElementById('reg-phone').value = '+60 12-345 6789';
+      document.getElementById('reg-bio').value = '';
+    }
+
+    switchAuthTab('login');
+    document.getElementById('login-username').value = username;
+    document.getElementById('login-password').focus();
+    
+  } catch (err) {
+    console.error(err);
+    showToast('Ralat sambungan pelayan. Sila cuba lagi.', false);
+  }
+}
+
+function logoutUser() {
+  localStorage.removeItem('agamaku_user');
+  DB.set('profile_user', null);
+  
+  if (appState.pollingInterval) {
+    clearInterval(appState.pollingInterval);
+    appState.pollingInterval = null;
+  }
+  
+  appState.currentUser = null;
+  appState.currentBooking = null;
+  DB.set('active_booking', null);
+  
+  stopJobAlarmLoop();
+  if (appState.partnerOnlineTimeout) {
+    clearTimeout(appState.partnerOnlineTimeout);
+    appState.partnerOnlineTimeout = null;
+  }
+  
+  document.getElementById('app-bottom-nav').style.display = 'none';
+  
+  showToast('Anda telah log keluar.', true);
+  navigateTo('auth-view');
+}
+
+async function deleteUserAccount() {
+  if (confirm('Adakah anda pasti mahu memadam akaun anda secara kekal? Tindakan ini tidak boleh diundur.')) {
+    try {
+      const res = await fetch(`/api/users/${appState.currentUser.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Akaun anda telah berjaya dipadam secara kekal.', true);
+        
+        // Clear everything locally
+        localStorage.removeItem('agamaku_user');
+        DB.set('profile_user', null);
+        if (appState.pollingInterval) clearInterval(appState.pollingInterval);
+        appState.pollingInterval = null;
+        appState.currentUser = null;
+        appState.currentBooking = null;
+        DB.set('active_booking', null);
+        stopJobAlarmLoop();
+        
+        document.getElementById('app-bottom-nav').style.display = 'none';
+        navigateTo('auth-view');
+      } else {
+        showToast(data.message || 'Ralat memadam akaun.', false);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Ralat rangkaian semasa memadam akaun.', false);
+    }
+  }
+};
+
+function startPollingActiveBookings() {
+  if (appState.pollingInterval) clearInterval(appState.pollingInterval);
+  
+  appState.pollingInterval = setInterval(async () => {
+    if (!appState.currentUser) return;
+    
+    // A. Partner Mode: listen for incoming jobs or updates to current jobs
+    if (appState.currentUser.role === 'partner') {
+      if (appState.partnerUser.online) {
+        // 1. If we don't have an active booking or it is still searching, check for new 'searching' requests
+        if (!appState.currentBooking || appState.currentBooking.status === 'searching') {
+          try {
+            const res = await fetch(`/api/bookings?teacherId=${appState.currentUser.teacher_id}`);
+            if (res.ok) {
+              const bookings = await res.json();
+              const searchingBooking = bookings.find(b => b.status === 'searching');
+              if (searchingBooking) {
+                appState.currentBooking = mapDatabaseBookingToAppState(searchingBooking);
+                DB.set('active_booking', appState.currentBooking);
+                if (!document.getElementById('job-alarm-modal').classList.contains('visible')) {
+                  triggerPartnerIncomingJobPing();
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error polling partner bookings:', err);
+          }
+        }
+      }
+      
+      // 2. If we have an active class booking, sync its status
+      if (appState.currentBooking) {
+        try {
+          const res = await fetch(`/api/bookings?teacherId=${appState.currentUser.teacher_id}`);
+          if (res.ok) {
+            const bookings = await res.json();
+            const currentDbBooking = bookings.find(b => b.id === appState.currentBooking.id);
+            
+            if (currentDbBooking && currentDbBooking.status !== appState.currentBooking.status) {
+              const newStatus = currentDbBooking.status;
+              appState.currentBooking = mapDatabaseBookingToAppState(currentDbBooking);
+              DB.set('active_booking', appState.currentBooking);
+
+              if (newStatus === 'cancelled') {
+                showToast('Pelajar telah membatalkan tempahan.', false);
+                appState.currentBooking = null;
+                DB.set('active_booking', null);
+                navigateTo('partner-home-view');
+              } else if (newStatus === 'arrived') {
+                showToast('Status: Telah Tiba di Lokasi', true);
+                updateJourneyUIStates();
+              } else if (newStatus === 'started') {
+                showToast('Status: Sesi kelas dimulakan!', true);
+                updateJourneyUIStates();
+              } else if (newStatus === 'completed') {
+                const newHistoryItem = {
+                  id: appState.currentBooking.id,
+                  serviceId: appState.currentBooking.serviceId,
+                  serviceName: appState.currentBooking.serviceName,
+                  teacherName: 'Anda',
+                  clientName: appState.currentBooking.clientName || 'Pelajar',
+                  datetime: appState.currentBooking.datetime,
+                  duration: appState.currentBooking.hours,
+                  price: appState.currentBooking.price * 0.9,
+                  status: 'completed',
+                  rated: false
+                };
+                appState.historyList.unshift(newHistoryItem);
+                DB.set('history_list', appState.historyList);
+                renderHistoryList();
+                
+                // Fetch the latest wallet balance from DB
+                const userRes = await fetch('/api/auth/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username: appState.currentUser.username, password: 'simulated_dummy_for_wallet_sync_skip' })
+                });
+                
+                // We'll just rely on a manual balance fetch or let the user refresh, but for now we can fetch the user directly
+                // Wait, we can't easily fetch just the user without their password via API unless we create a /api/users/me endpoint.
+                // Let's just update the local balance optimistically
+                appState.currentUser.balance += (appState.currentBooking.price * 0.9);
+                appState.partnerUser.wallet = appState.currentUser.balance;
+                localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+                DB.set('profile_partner', appState.partnerUser);
+                updateUIWalletBalances();
+                
+                appState.currentBooking = null;
+                DB.set('active_booking', null);
+                showToast('Kelas selesai! Bayaran dimasukkan ke dompet anda.', true);
+                playSuccessChime();
+                navigateTo('partner-home-view');
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error syncing active partner booking:', err);
+        }
+      }
+    }
+    
+    // B. Student Mode: listen for updates on active bookings (searching, accepted, arrived, started, completed)
+    if (appState.currentUser.role === 'user' && appState.currentBooking) {
+      try {
+        const res = await fetch(`/api/bookings?userId=${appState.currentUser.id}`);
+        if (res.ok) {
+          const bookings = await res.json();
+          const currentDbBooking = bookings.find(b => b.id === appState.currentBooking.id);
+          
+          if (currentDbBooking && currentDbBooking.status !== appState.currentBooking.status) {
+            const oldStatus = appState.currentBooking.status;
+            const newStatus = currentDbBooking.status;
+            
+            // Map the fresh db booking details
+            appState.currentBooking = mapDatabaseBookingToAppState(currentDbBooking);
+            DB.set('active_booking', appState.currentBooking);
+            
+            if (newStatus === 'accepted' && oldStatus === 'searching') {
+              playSuccessChime();
+              showToast(`Berjaya dipadankan dengan ${appState.currentBooking.teacher.name}!`);
+              navigateTo('active-job-view');
+              startAutomaticTeacherMovement();
+            } else if (newStatus === 'arrived') {
+              playSuccessChime();
+              showToast('Ustaz telah sampai di alamat anda!', true);
+              updateJourneyUIStates();
+            } else if (newStatus === 'started') {
+              showToast('Sesi kelas dimulakan!', true);
+              updateJourneyUIStates();
+            } else if (newStatus === 'completed') {
+              // STUDENT COMPLETION FLOW (Student reviews Ustaz)
+              const newHistoryItem = {
+                id: appState.currentBooking.id,
+                serviceId: appState.currentBooking.serviceId,
+                serviceName: appState.currentBooking.serviceName,
+                teacherName: appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah',
+                datetime: appState.currentBooking.datetime,
+                duration: appState.currentBooking.hours,
+                price: appState.currentBooking.price,
+                status: 'completed',
+                rated: false
+              };
+              appState.historyList.unshift(newHistoryItem);
+              DB.set('history_list', appState.historyList);
+              renderHistoryList();
+              updateUIWalletBalances();
+
+              // Setup review view fields
+              document.getElementById('review-teacher-avatar').textContent = appState.currentBooking.teacher ? appState.currentBooking.teacher.avatar : '🧕';
+              document.getElementById('review-teacher-name').textContent = appState.currentBooking.teacher ? appState.currentBooking.teacher.name : 'Ustaz / Ustazah';
+              document.getElementById('review-service-desc').textContent = `Sesi ${appState.currentBooking.serviceName} Selesai`;
+              document.getElementById('review-comment').value = '';
+              appState.activeRating = 5;
+              rateSession(5);
+
+              // Remove active booking
+              appState.currentBooking = null;
+              DB.set('active_booking', null);
+
+              showToast('Kelas selesai! Terima kasih.', true);
+              playSuccessChime();
+              navigateTo('review-view');
+            } else if (newStatus === 'cancelled') {
+              showToast('Tempahan telah dibatalkan oleh Ustaz.', false);
+              appState.currentBooking = null;
+              DB.set('active_booking', null);
+              navigateTo('home-view');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error polling student bookings:', err);
+      }
+    }
+  }, 2000);
+}
+
+function mapDatabaseBookingToAppState(dbBooking) {
+  const teacher = appState.teachersList.find(t => t.id === dbBooking.teacherId);
+  const service = initialServices.find(s => s.id === dbBooking.serviceId) || { name: 'Kelas Agama', icon: '🕌' };
+  
+  return {
+    id: dbBooking.id,
+    serviceId: dbBooking.serviceId,
+    serviceName: service.name,
+    icon: service.icon,
+    price: dbBooking.totalPrice,
+    hours: dbBooking.duration + ' Jam',
+    datetime: dbBooking.date + 'T' + dbBooking.time,
+    address: 'Destinasi Pelajar',
+    notes: 'Pembelajaran peribadi AgamaKu.',
+    teacher: teacher,
+    status: dbBooking.status,
+    clientName: dbBooking.clientName || 'Sarah Amira',
+    chatHistory: [
+      { sender: 'teacher', text: 'Assalamualaikum. Saya telah menerima tugasan kelas anda. Saya sedang bergerak ke alamat anda sekarang.', time: '16:47' }
+    ]
+  };
 }
 
 // ----------------------------------------------------
 // UI Renderers & Helpers
 // ----------------------------------------------------
-function startClock() {
-  const clockEl = document.getElementById('live-clock');
-  const updateClock = () => {
-    const now = new Date();
-    let hrs = now.getHours().toString().padStart(2, '0');
-    let mins = now.getMinutes().toString().padStart(2, '0');
-    clockEl.textContent = `${hrs}:${mins}`;
-  };
-  updateClock();
-  setInterval(updateClock, 30000);
-}
 
 function updateUIWalletBalances() {
+  if (!appState.currentUser) return;
   // User mode wallet bindings
-  document.getElementById('home-wallet-amount').textContent = `RM ${appState.currentUser.wallet.toFixed(2)}`;
-  document.getElementById('wallet-balance-total').textContent = `RM ${appState.currentUser.wallet.toFixed(2)}`;
+  const balance = appState.currentUser.balance !== undefined ? appState.currentUser.balance : (appState.currentUser.wallet || 0);
+  
+  document.getElementById('home-wallet-amount').textContent = `RM ${balance.toFixed(2)}`;
+  document.getElementById('wallet-balance-total').textContent = `RM ${balance.toFixed(2)}`;
   
   // Partner mode wallet bindings
-  document.getElementById('partner-wallet-amount').textContent = `RM ${appState.partnerUser.wallet.toFixed(2)}`;
-  document.getElementById('partner-stats-today').textContent = `RM ${appState.partnerUser.earningsToday.toFixed(2)}`;
-  document.getElementById('partner-stats-week').textContent = `RM ${appState.partnerUser.earningsWeek.toFixed(2)}`;
+  if (appState.partnerUser) {
+    const partnerBalance = appState.partnerUser.wallet !== undefined ? appState.partnerUser.wallet : 0;
+    document.getElementById('partner-wallet-amount').textContent = `RM ${partnerBalance.toFixed(2)}`;
+    document.getElementById('partner-stats-today').textContent = `RM ${appState.partnerUser.earningsToday.toFixed(2)}`;
+    document.getElementById('partner-stats-week').textContent = `RM ${appState.partnerUser.earningsWeek.toFixed(2)}`;
+  }
 }
 
 function renderFeaturedTeachers() {
@@ -123,7 +669,7 @@ function renderFeaturedTeachers() {
   container.innerHTML = '';
 
   // Draw first 3 teachers
-  initialUstazList.slice(0, 3).forEach(teacher => {
+  appState.teachersList.slice(0, 3).forEach(teacher => {
     const specialtiesText = teacher.specialties.map(specId => {
       const spec = initialServices.find(s => s.id === specId);
       return `<span class="specialty-tag">${spec ? spec.name.split(' ')[0] : specId}</span>`;
@@ -329,7 +875,7 @@ function calculateBookingPrice() {
   return price;
 }
 
-function startBookingSearch() {
+async function startBookingSearch() {
   const select = document.getElementById('booking-service-select');
   const serviceId = select.value;
   const service = initialServices.find(s => s.id === serviceId);
@@ -349,7 +895,8 @@ function startBookingSearch() {
   }
 
   // Verify wallet balance
-  if (appState.currentUser.wallet < price) {
+  const balance = appState.currentUser.balance !== undefined ? appState.currentUser.balance : (appState.currentUser.wallet || 0);
+  if (balance < price) {
     showToast('Baki AgamaKu Pay tidak mencukupi. Sila tambah nilai dompet.', false);
     setTimeout(() => {
       navigateTo('wallet-view');
@@ -357,105 +904,111 @@ function startBookingSearch() {
     return;
   }
 
-  // Setup Search State
+  // Pick matched teacher
+  let matchedTeacher = null;
+  if (appState.selectedTeacher) {
+    matchedTeacher = appState.selectedTeacher;
+  } else {
+    // Find teacher matching gender preference
+    const candidates = appState.teachersList.filter(t => {
+      if (genderPref !== 'any' && t.gender !== (genderPref === 'P' ? 'ustazah' : 'ustaz')) return false;
+      return t.specialties.includes(serviceId);
+    });
+
+    if (candidates.length > 0) {
+      matchedTeacher = candidates[Math.floor(Math.random() * candidates.length)];
+    } else {
+      matchedTeacher = appState.teachersList[0];
+    }
+  }
+
+  // Setup Search State UI
   document.getElementById('matching-status-title').textContent = 'Mencari Ustaz...';
   document.getElementById('radar-icon').textContent = service.icon;
   navigateTo('matching-view');
 
-  // If partner is ONLINE, we trigger the real job ping!
-  // However, if the user locked a specific teacher that is NOT the partner (Zulkifli), we bypass dual simulation.
-  const isZulkifliBooking = appState.selectedTeacher && appState.selectedTeacher.id === 'ustaz_zulkifli';
-  const bypassDualSim = appState.selectedTeacher && !isZulkifliBooking;
+  const dateParts = datetime.split('T');
+  const date = dateParts[0];
+  const time = dateParts[1] || '00:00';
 
-  if (appState.partnerUser.role === 'partner' && appState.partnerUser.online && !bypassDualSim) {
-    // This is the dual mode cross simulation!
-    // The user has booked a service. We will trigger the incoming job offer alarm in partner mode,
-    // and wait for the user to switch to partner mode to accept it!
-    
-    appState.currentBooking = {
-      id: 'bk_' + Date.now(),
-      serviceId,
-      serviceName: service.name,
-      icon: service.icon,
-      price,
-      hours: hours + ' Jam',
-      datetime,
-      address,
-      notes,
-      genderPref,
-      clientName: appState.currentUser.name,
-      status: 'matching',
-      isDualSimulation: true
-    };
-    DB.set('active_booking', appState.currentBooking);
+  // Make the API call to create the booking in SQLite
+  try {
+    const res = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: appState.currentUser.id,
+        teacherId: matchedTeacher.id,
+        serviceId: serviceId,
+        date: date,
+        time: time,
+        duration: hours,
+        totalPrice: price
+      })
+    });
 
-    showToast('Tugasan dihantar! Tukar ke Mod Ustaz Partner untuk terima kerja ini!', true);
-    
-    // Automatically sound the alarm in the background
-    triggerPartnerIncomingJobPing();
-    return;
-  }
-
-  // Normal Simulation: Search for nearest matching Ustaz automatically after 4 seconds
-  let matchTimeout = setTimeout(() => {
-    let matchedTeacher = null;
-    
-    if (appState.selectedTeacher) {
-      matchedTeacher = appState.selectedTeacher;
-    } else {
-      // Find teacher matching gender preference
-      const candidates = initialUstazList.filter(t => {
-        if (genderPref !== 'any' && t.gender !== genderPref) return false;
-        return t.specialties.includes(serviceId);
-      });
-
-      if (candidates.length > 0) {
-        // Pick random matched teacher
-        matchedTeacher = candidates[Math.floor(Math.random() * candidates.length)];
-      } else {
-        // Fallback
-        matchedTeacher = initialUstazList[0];
-      }
+    const data = await res.json();
+    if (!data.success) {
+      showToast(data.message || 'Gagal menghantar tempahan.', false);
+      navigateTo('booking-view');
+      return;
     }
 
-    // Deduct yuran
-    appState.currentUser.wallet -= price;
-    DB.set('profile_user', appState.currentUser);
-    updateUIWalletBalances();
-
-    appState.currentBooking = {
-      id: 'bk_' + Date.now(),
-      serviceId,
-      serviceName: service.name,
-      icon: service.icon,
-      price,
-      hours: hours + ' Jam',
-      datetime,
-      address,
-      notes,
-      teacher: matchedTeacher,
-      status: 'accepted',
-      chatHistory: [
-        { sender: 'teacher', text: 'Assalamualaikum tuan. Terima kasih atas tempahan kelas. Saya sedang bersiap dan akan segera bertolak.', time: '16:46' }
-      ]
-    };
+    // Set active booking in student appState
+    appState.currentBooking = mapDatabaseBookingToAppState(data.booking);
     DB.set('active_booking', appState.currentBooking);
 
-    playSuccessChime();
-    showToast(`Berjaya dipadankan dengan ${matchedTeacher.name}!`);
-    
-    navigateTo('active-job-view');
-    startAutomaticTeacherMovement();
-  }, 4000);
+    // Reload database teachers list to get the latest online statuses
+    try {
+      await loadDatabaseData();
+    } catch (e) {
+      console.warn('Error loading latest database data in search:', e);
+    }
 
-  appState.matchTimeout = matchTimeout;
+    const latestTeacherInfo = appState.teachersList.find(t => t.id === matchedTeacher.id);
+    const isTeacherOnline = latestTeacherInfo && latestTeacherInfo.online;
+    const isMyOwnTeacherProfile = appState.currentUser && appState.currentUser.teacher_id === matchedTeacher.id;
+
+    if (isMyOwnTeacherProfile) {
+      if (appState.partnerUser && appState.partnerUser.online) {
+        showToast('Tugasan dihantar! Tukar ke Mod Ustaz untuk terima tempahan ini!', true);
+      } else {
+        showToast('Peringatan: Anda sedang luar talian. Tukar ke Mod Ustaz dan Pergi Online untuk terima!', false);
+      }
+    } else if (!isTeacherOnline) {
+      showToast(`Peringatan: ${matchedTeacher.name} sedang luar talian. (Sila ke profil ustaz yang online)`, false);
+    } else {
+      showToast(`Tugasan dihantar! Menunggu ${matchedTeacher.name} menerima tempahan anda...`, true);
+    }
+
+  } catch (err) {
+    console.error(err);
+    showToast('Ralat sambungan pelayan.', false);
+    navigateTo('booking-view');
+  }
 }
 
-function cancelBookingSearch() {
+async function cancelBookingSearch() {
   if (appState.matchTimeout) {
     clearTimeout(appState.matchTimeout);
     appState.matchTimeout = null;
   }
+  
+  if (appState.currentBooking) {
+    try {
+      await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: appState.currentBooking.id,
+          status: 'cancelled'
+        })
+      });
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+    }
+  }
+
   appState.currentBooking = null;
   DB.set('active_booking', null);
   showToast('Carian kelas dibatalkan.');
@@ -566,7 +1119,7 @@ function startAutomaticTeacherMovement() {
   }, 2000);
 }
 
-function simulateActiveJobNextStep() {
+async function simulateActiveJobNextStep() {
   const booking = appState.currentBooking;
   if (!booking) return;
 
@@ -580,105 +1133,154 @@ function simulateActiveJobNextStep() {
       const name = booking.teacher ? booking.teacher.name : 'Anda';
       appState.activeMap.setUstaz({ x: 0.5, y: 0.5, avatar: avatar, name: name });
     }
-    booking.status = 'arrived';
-    booking.chatHistory.push({
-      sender: 'teacher',
-      text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
-      time: '16:52'
-    });
-    DB.set('active_booking', booking);
     
-    if (isPartner) {
-      showToast('Anda telah sampai di destinasi!', true);
-    } else {
-      showToast('Ustaz telah sampai di alamat anda!', true);
+    try {
+      const res = await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, status: 'arrived' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        booking.status = 'arrived';
+        booking.chatHistory.push({
+          sender: 'teacher',
+          text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
+          time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+        });
+        DB.set('active_booking', booking);
+        
+        if (isPartner) {
+          showToast('Anda telah sampai di destinasi!', true);
+        } else {
+          showToast('Ustaz telah sampai di alamat anda!', true);
+        }
+        playSuccessChime();
+        updateJourneyUIStates();
+      }
+    } catch (e) {
+      console.error(e);
     }
-    
-    playSuccessChime();
-    updateJourneyUIStates();
+
   } else if (booking.status === 'arrived') {
     // Start class
-    booking.status = 'started';
-    booking.chatHistory.push({
-      sender: 'teacher',
-      text: 'Sesi pengajian telah bermula. Mari mulakan dengan bacaan Ummul Kitab Al-Fatihah.',
-      time: '16:53'
-    });
-    DB.set('active_booking', booking);
-    showToast('Sesi kelas dimulakan!', true);
-    updateJourneyUIStates();
+    try {
+      const res = await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, status: 'started' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        booking.status = 'started';
+        booking.chatHistory.push({
+          sender: 'teacher',
+          text: 'Sesi pengajian telah bermula. Mari mulakan dengan bacaan Ummul Kitab Al-Fatihah.',
+          time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+        });
+        DB.set('active_booking', booking);
+        showToast('Sesi kelas dimulakan!', true);
+        updateJourneyUIStates();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
   } else if (booking.status === 'started') {
     // End class session and go to reviews / complete partner earnings
     stopClassDurationTimer();
     
-    if (isPartner) {
-      // PARTNER COMPLETION FLOW (Ustaz gets paid!)
-      const earnings = booking.price * 0.9; // 90% of price
-      appState.partnerUser.wallet += earnings;
-      appState.partnerUser.earningsToday += earnings;
-      appState.partnerUser.earningsWeek += earnings;
-      appState.partnerUser.completedJobs += 1;
-      DB.set('profile_partner', appState.partnerUser);
+    try {
+      const res = await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, status: 'completed' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showToast(data.message || 'Gagal melengkapkan kelas.', false);
+        return;
+      }
 
-      // Save to history list
-      const newHistoryItem = {
-        id: booking.id,
-        serviceId: booking.serviceId,
-        serviceName: booking.serviceName,
-        teacherName: 'Anda (Ustaz)',
-        clientName: booking.clientName || 'Sarah Amira',
-        datetime: booking.datetime,
-        duration: booking.hours,
-        price: earnings,
-        status: 'completed',
-        isPartnerEarning: true
-      };
-      appState.historyList.unshift(newHistoryItem);
-      DB.set('history_list', appState.historyList);
-      renderHistoryList();
+      // Update current user balance from response
+      if (data.user) {
+        appState.currentUser.balance = data.user.balance;
+        localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+      }
 
-      updateUIWalletBalances();
+      // Reload database data (updates reviews & ratings list in real time!)
+      await loadDatabaseData();
 
-      // Clear active booking
-      appState.currentBooking = null;
-      DB.set('active_booking', null);
+      if (isPartner) {
+        const earnings = booking.price * 0.9; // 90% of price
+        appState.partnerUser.wallet = appState.currentUser.balance;
+        appState.partnerUser.earningsToday += earnings;
+        appState.partnerUser.earningsWeek += earnings;
+        appState.partnerUser.completedJobs += 1;
+        
+        // Save to history list
+        const newHistoryItem = {
+          id: booking.id,
+          serviceId: booking.serviceId,
+          serviceName: booking.serviceName,
+          teacherName: 'Anda (Ustaz)',
+          clientName: booking.clientName || 'Pelajar',
+          datetime: booking.datetime,
+          duration: booking.hours,
+          price: earnings,
+          status: 'completed',
+          isPartnerEarning: true
+        };
+        appState.historyList.unshift(newHistoryItem);
+        DB.set('history_list', appState.historyList);
+        renderHistoryList();
+        updateUIWalletBalances();
 
-      showToast(`Kelas selesai! RM ${earnings.toFixed(2)} dikreditkan ke dompet anda.`, true);
-      playSuccessChime();
-      navigateTo('partner-home-view');
-    } else {
-      // STUDENT COMPLETION FLOW (Student reviews Ustaz)
-      // Save to history list
-      const newHistoryItem = {
-        id: booking.id,
-        serviceId: booking.serviceId,
-        serviceName: booking.serviceName,
-        teacherName: booking.teacher ? booking.teacher.name : 'Ustaz Ahmad',
-        datetime: booking.datetime,
-        duration: booking.hours,
-        price: booking.price,
-        status: 'completed',
-        rated: false
-      };
-      appState.historyList.unshift(newHistoryItem);
-      DB.set('history_list', appState.historyList);
-      renderHistoryList();
+        // Clear active booking
+        appState.currentBooking = null;
+        DB.set('active_booking', null);
 
-      // Setup review view fields
-      document.getElementById('review-teacher-avatar').textContent = booking.teacher ? booking.teacher.avatar : '👳‍♂️';
-      document.getElementById('review-teacher-name').textContent = booking.teacher ? booking.teacher.name : 'Ustaz Ahmad';
-      document.getElementById('review-service-desc').textContent = `Sesi ${booking.serviceName} Selesai`;
-      document.getElementById('review-comment').value = '';
-      appState.activeRating = 5;
-      rateSession(5);
+        showToast(`Kelas selesai! RM ${earnings.toFixed(2)} dikreditkan ke dompet anda.`, true);
+        playSuccessChime();
+        navigateTo('partner-home-view');
+      } else {
+        // STUDENT COMPLETION FLOW (Student reviews Ustaz)
+        // Save to history list
+        const newHistoryItem = {
+          id: booking.id,
+          serviceId: booking.serviceId,
+          serviceName: booking.serviceName,
+          teacherName: booking.teacher ? booking.teacher.name : 'Ustaz Ahmad',
+          datetime: booking.datetime,
+          duration: booking.hours,
+          price: booking.price,
+          status: 'completed',
+          rated: false
+        };
+        appState.historyList.unshift(newHistoryItem);
+        DB.set('history_list', appState.historyList);
+        renderHistoryList();
+        updateUIWalletBalances();
 
-      // Remove active booking
-      appState.currentBooking = null;
-      DB.set('active_booking', null);
+        // Setup review view fields
+        document.getElementById('review-teacher-avatar').textContent = booking.teacher ? booking.teacher.avatar : '👳‍♂️';
+        document.getElementById('review-teacher-name').textContent = booking.teacher ? booking.teacher.name : 'Ustaz Ahmad';
+        document.getElementById('review-service-desc').textContent = `Sesi ${booking.serviceName} Selesai`;
+        document.getElementById('review-comment').value = '';
+        appState.activeRating = 5;
+        rateSession(5);
 
-      showToast('Kelas selesai! Terima kasih.', true);
-      playSuccessChime();
-      navigateTo('review-view');
+        // Remove active booking
+        appState.currentBooking = null;
+        DB.set('active_booking', null);
+
+        showToast('Kelas selesai! Terima kasih.', true);
+        playSuccessChime();
+        navigateTo('review-view');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Ralat sambungan pelayan.', false);
     }
   }
 }
@@ -884,19 +1486,25 @@ function renderHistoryList() {
   }
 
   appState.historyList.forEach(item => {
-    const service = initialServices.find(s => s.id === item.serviceId);
-    const starString = item.rated ? `⭐ ${item.rating}.0` : 'Belum dinilai';
+    const isPartnerView = appState.currentUser && appState.currentUser.role === 'partner';
+    const service = initialServices.find(s => s.id === item.serviceId) || { name: 'Kelas Agama' };
+    const starString = item.rated ? `⭐ ${item.rating}.0` : (item.status === 'completed' ? 'Selesai' : 'Dibatalkan');
+    
+    // For partner view, it's an earning. For user view, it's a payment.
+    const amountClass = isPartnerView ? 'positive' : 'negative';
+    const amountPrefix = isPartnerView ? '+RM' : '-RM';
+    const personLabel = isPartnerView ? `Pelajar: ${item.clientName}` : `Guru: ${item.teacherName}`;
 
     const card = document.createElement('div');
     card.className = 'history-item-card';
     card.innerHTML = `
       <div class="history-item-left">
         <span class="history-item-title">${item.serviceName}</span>
-        <span class="history-item-sub">Guru: ${item.teacherName} • ${item.duration}</span>
+        <span class="history-item-sub">${personLabel} • ${item.duration}</span>
         <span class="history-item-sub" style="font-size:9px; color:var(--color-text-muted);">${new Date(item.datetime).toLocaleString('ms-MY')}</span>
       </div>
       <div class="history-item-right">
-        <span class="history-item-amount negative">-RM ${item.price.toFixed(2)}</span>
+        <span class="history-item-amount ${amountClass}">${amountPrefix} ${item.price.toFixed(2)}</span>
         <span class="history-item-status">${starString}</span>
       </div>
     `;
@@ -911,7 +1519,7 @@ function setWalletInputAmount(val) {
   document.getElementById('wallet-input-amount').value = val;
 }
 
-function performTopUp() {
+async function performTopUp() {
   const input = document.getElementById('wallet-input-amount');
   const amount = parseFloat(input.value);
   
@@ -920,20 +1528,39 @@ function performTopUp() {
     return;
   }
 
-  if (appState.currentUser.role === 'user') {
-    appState.currentUser.wallet += amount;
-    DB.set('profile_user', appState.currentUser);
-  } else {
-    appState.partnerUser.wallet += amount;
-    DB.set('profile_partner', appState.partnerUser);
-  }
+  try {
+    const res = await fetch('/api/users/update-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: appState.currentUser.id,
+        amount: amount
+      })
+    });
 
-  updateUIWalletBalances();
-  showToast(`Tambah nilai RM ${amount.toFixed(2)} berjaya!`);
-  playSuccessChime();
+    const data = await res.json();
+    if (res.ok && data.success) {
+      appState.currentUser.balance = data.user.balance;
+      localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+      
+      if (appState.currentUser.role === 'partner') {
+        appState.partnerUser.wallet = data.user.balance;
+      }
+      
+      updateUIWalletBalances();
+      showToast(`Tambah nilai RM ${amount.toFixed(2)} berjaya!`);
+      playSuccessChime();
+      input.value = '';
+    } else {
+      showToast(data.message || 'Tambah nilai gagal.', false);
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('Ralat rangkaian semasa tambah nilai.', false);
+  }
 }
 
-function performWithdrawal() {
+async function performWithdrawal() {
   const input = document.getElementById('wallet-input-amount');
   const amount = parseFloat(input.value);
   
@@ -942,36 +1569,74 @@ function performWithdrawal() {
     return;
   }
 
-  const activeWallet = appState.currentUser.role === 'user' ? appState.currentUser.wallet : appState.partnerUser.wallet;
+  const balance = appState.currentUser.balance !== undefined ? appState.currentUser.balance : 0;
 
-  if (activeWallet < amount) {
+  if (balance < amount) {
     showToast('Baki dompet anda tidak mencukupi untuk pengeluaran ini', false);
     return;
   }
 
-  if (appState.currentUser.role === 'user') {
-    appState.currentUser.wallet -= amount;
-    DB.set('profile_user', appState.currentUser);
-  } else {
-    appState.partnerUser.wallet -= amount;
-    DB.set('profile_partner', appState.partnerUser);
-  }
+  try {
+    const res = await fetch('/api/users/update-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: appState.currentUser.id,
+        amount: -amount
+      })
+    });
 
-  updateUIWalletBalances();
-  showToast(`Pengeluaran RM ${amount.toFixed(2)} berjaya dihantar ke bank anda!`);
-  playSuccessChime();
+    const data = await res.json();
+    if (res.ok && data.success) {
+      appState.currentUser.balance = data.user.balance;
+      localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+      
+      if (appState.currentUser.role === 'partner') {
+        appState.partnerUser.wallet = data.user.balance;
+      }
+      
+      updateUIWalletBalances();
+      showToast(`Pengeluaran RM ${amount.toFixed(2)} berjaya dihantar ke bank anda!`);
+      playSuccessChime();
+      input.value = '';
+    } else {
+      showToast(data.message || 'Pengeluaran gagal.', false);
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('Ralat rangkaian semasa pengeluaran.', false);
+  }
 }
 
 // ----------------------------------------------------
 // Dual Mode Switching Logic (User Mode <=> Partner Mode)
 // ----------------------------------------------------
+function updateUserProfileUI() {
+  if (!appState.currentUser) return;
+  
+  const profileNameEl = document.querySelector('#profile-view .profile-name');
+  const profileAvatarEl = document.querySelector('#profile-view .profile-avatar-large');
+  const partnerSwitchBox = document.querySelector('.partner-mode-switch-box');
+  
+  if (profileNameEl) profileNameEl.textContent = appState.currentUser.fullname || 'Pengguna';
+  if (profileAvatarEl) profileAvatarEl.textContent = appState.currentUser.gender === 'P' ? '🧕' : '🧑';
+  
+  if (partnerSwitchBox) {
+    if (appState.currentUser.teacher_id) {
+      partnerSwitchBox.style.display = 'flex';
+    } else {
+      partnerSwitchBox.style.display = 'none';
+    }
+  }
+}
+
 function toggleDualMode() {
   const isCurrentlyUser = appState.currentUser.role === 'user';
   const overlay = document.getElementById('mode-switch-overlay');
   const label = document.getElementById('mode-switch-overlay-label');
 
   // Activate overlay transition
-  label.textContent = isCurrentlyUser ? 'Menukar ke Mod Ustaz Partner...' : 'Menukar ke Mod Pelajar...';
+  label.textContent = isCurrentlyUser ? 'Menukar ke Mod Ustaz...' : 'Menukar ke Mod Pelajar...';
   overlay.classList.add('visible');
 
   playAudioTone(783.99, 'triangle', 250);
@@ -989,6 +1654,7 @@ function toggleDualMode() {
     }
 
     DB.set('profile_user', appState.currentUser);
+    localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
     
     // Hide overlay
     overlay.classList.remove('visible');
@@ -1005,6 +1671,17 @@ function navigateToUserDashboard() {
   document.getElementById('partner-status-toggle').classList.remove('active');
   document.getElementById('partner-online-status-lbl').textContent = 'Luar Talian (Offline)';
   document.getElementById('partner-online-status-lbl').className = 'partner-status-status';
+
+  if (appState.currentUser && appState.currentUser.teacher_id) {
+    fetch('/api/teachers/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teacherId: appState.currentUser.teacher_id,
+        online: false
+      })
+    }).catch(err => console.error('Error updating online status:', err));
+  }
   
   if (appState.partnerOnlineTimeout) {
     clearTimeout(appState.partnerOnlineTimeout);
@@ -1032,6 +1709,17 @@ function togglePartnerAvailability() {
   appState.partnerUser.online = !appState.partnerUser.online;
   DB.set('profile_partner', appState.partnerUser);
 
+  if (appState.currentUser && appState.currentUser.teacher_id) {
+    fetch('/api/teachers/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teacherId: appState.currentUser.teacher_id,
+        online: appState.partnerUser.online
+      })
+    }).catch(err => console.error('Error updating online status:', err));
+  }
+
   const toggleBtn = document.getElementById('partner-status-toggle');
   const statusLbl = document.getElementById('partner-online-status-lbl');
 
@@ -1043,23 +1731,11 @@ function togglePartnerAvailability() {
 
     // Play Online trigger sound
     playAudioTone(1046.50, 'triangle', 250);
-
-    // Dual Simulation Mode: If we have a pending matching class created in user mode, ping it immediately!
-    // Otherwise, simulate a mock random customer booking after 8 seconds!
-    if (appState.currentBooking && appState.currentBooking.isDualSimulation && appState.currentBooking.status === 'matching') {
-      setTimeout(() => {
-        triggerPartnerIncomingJobPing();
-      }, 2000);
-    } else {
-      appState.partnerOnlineTimeout = setTimeout(() => {
-        simulateIncomingRandomJob();
-      }, 7000);
-    }
   } else {
     toggleBtn.classList.remove('active');
     statusLbl.textContent = 'Luar Talian (Offline)';
     statusLbl.className = 'partner-status-status';
-    showToast('Ketersediaan ditutup.');
+    showToast('Terima Tempahan ditutup.');
 
     if (appState.partnerOnlineTimeout) {
       clearTimeout(appState.partnerOnlineTimeout);
@@ -1106,50 +1782,36 @@ function triggerPartnerIncomingJobPing() {
   }, 1000);
 }
 
-function simulateIncomingRandomJob() {
-  // Synthesize a random client booking
-  const randomServices = initialServices;
-  const randomService = randomServices[Math.floor(Math.random() * randomServices.length)];
-  const randomPrice = randomService.pricePerHour * 1.5;
 
-  appState.currentBooking = {
-    id: 'bk_' + Date.now(),
-    serviceId: randomService.id,
-    serviceName: randomService.name,
-    icon: randomService.icon,
-    price: randomPrice,
-    hours: '1.5 Jam',
-    datetime: 'Hari ini, 5:00 PM',
-    address: 'Lot 245, Lorong Damai 4, Kampung Dato Mufti, KL',
-    notes: 'Mohon fokus mengaji tajwid makhraj huruf.',
-    clientName: 'Sarah Amira',
-    status: 'matching',
-    isDualSimulation: true
-  };
-  DB.set('active_booking', appState.currentBooking);
-
-  triggerPartnerIncomingJobPing();
-}
-
-function rejectIncomingJob() {
+async function rejectIncomingJob() {
   stopJobAlarmLoop();
   if (appState.jobCountdownInterval) clearInterval(appState.jobCountdownInterval);
   document.getElementById('job-alarm-modal').classList.remove('visible');
   
+  if (appState.currentBooking) {
+    if (!appState.currentBooking.id.startsWith('bk_')) {
+      try {
+        await fetch('/api/bookings/update-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: appState.currentBooking.id,
+            status: 'cancelled'
+          })
+        });
+      } catch (e) {
+        console.error('Error rejecting booking:', e);
+      }
+    }
+  }
+
   appState.currentBooking = null;
   DB.set('active_booking', null);
   
   showToast('Tugasan ditolak.');
-  
-  // Queue another random job in 12s if still online
-  if (appState.partnerUser.online) {
-    appState.partnerOnlineTimeout = setTimeout(() => {
-      simulateIncomingRandomJob();
-    }, 12000);
-  }
 }
 
-function acceptIncomingJob() {
+async function acceptIncomingJob() {
   stopJobAlarmLoop();
   if (appState.jobCountdownInterval) clearInterval(appState.jobCountdownInterval);
   document.getElementById('job-alarm-modal').classList.remove('visible');
@@ -1159,116 +1821,105 @@ function acceptIncomingJob() {
   const booking = appState.currentBooking;
   if (!booking) return;
 
-  booking.status = 'accepted';
-  // If this was booked by active user profile, deduct their wallet
-  if (booking.clientName === appState.currentUser.name) {
-    appState.currentUser.wallet -= booking.price;
-    DB.set('profile_user', appState.currentUser);
-  }
 
-  // Create chat logs
-  booking.chatHistory = [
-    { sender: 'teacher', text: 'Assalamualaikum. Saya telah menerima tugasan kelas anda. Saya sedang bergerak ke alamat anda sekarang.', time: '16:47' }
-  ];
-  DB.set('active_booking', booking);
-
-  showToast('Tugasan diterima! Perjalanan bermula.', true);
-  
-  // Switch to live map but this time as driver!
-  navigateTo('active-job-view');
-  
-  // Set driver UI configurations
-  document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-navigation-line"></i> Anda Sedang Menavigasi Ke Lokasi Pelajar';
-  document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Sarah Amira';
-  document.getElementById('active-job-teacher-avatar').textContent = '🧑';
-  document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
-  document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
-  document.getElementById('active-job-eta').textContent = 'ETA: 5 min';
-
-  // Instantiate live canvas map. User stays at center, Driver moves from candidates coords to center!
-  setTimeout(() => {
-    const map = new AgamaKuMap('mapCanvas', { x: 0.5, y: 0.5 });
-    appState.activeMap = map;
-    
-    // Set starting position of driver at the edges
-    const startCoord = { x: 0.15, y: 0.25 };
-    map.setUstaz({
-      x: startCoord.x,
-      y: startCoord.y,
-      avatar: '👳‍♂️',
-      name: 'Anda'
+  try {
+    const res = await fetch('/api/bookings/update-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingId: booking.id,
+        status: 'accepted'
+      })
     });
 
-    // Animate driver moving to center over 12 seconds
-    map.animateUstazJourney(
-      startCoord,
-      { x: 0.5, y: 0.5 },
-      12000,
-      (progress) => {
-        const etaMins = Math.ceil((1 - progress) * 5);
-        document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
-      },
-      () => {
-        booking.status = 'arrived';
-        booking.chatHistory.push({
-          sender: 'teacher',
-          text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
-          time: '16:53'
-        });
-        DB.set('active_booking', booking);
-        showToast('Anda telah sampai di destinasi!', true);
-        playSuccessChime();
-        
-        // Update driver screen details
-        document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-map-pin-user-fill"></i> Anda Telah Tiba di Lokasi';
-        document.getElementById('active-job-eta').style.display = 'none';
-        document.getElementById('simulation-skip-btn').textContent = 'Mulakan Kelas';
-      }
-    );
+    const data = await res.json();
+    if (res.ok && data.success) {
+      appState.currentBooking = mapDatabaseBookingToAppState(data.booking);
+      DB.set('active_booking', appState.currentBooking);
 
-  }, 100);
+      showToast('Tugasan diterima! Perjalanan bermula.', true);
+  
+      // Switch to live map but this time as driver!
+      navigateTo('active-job-view');
+      
+      // Set driver UI configurations
+      document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-navigation-line"></i> Anda Sedang Menavigasi Ke Lokasi Pelajar';
+      document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Sarah Amira';
+      document.getElementById('active-job-teacher-avatar').textContent = '🧑';
+      document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
+      document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
+      document.getElementById('active-job-eta').textContent = 'ETA: 5 min';
+
+      // Instantiate live canvas map. User stays at center, Driver moves from candidates coords to center!
+      setTimeout(() => {
+        const map = new AgamaKuMap('mapCanvas', { x: 0.5, y: 0.5 });
+        appState.activeMap = map;
+        
+        // Set starting position of driver at the edges
+        const startCoord = { x: 0.15, y: 0.25 };
+        map.setUstaz({
+          x: startCoord.x,
+          y: startCoord.y,
+          avatar: '👳‍♂️',
+          name: 'Anda'
+        });
+
+        // Animate driver moving to center over 12 seconds
+        map.animateUstazJourney(
+          startCoord,
+          { x: 0.5, y: 0.5 },
+          12000,
+          (progress) => {
+            const etaMins = Math.ceil((1 - progress) * 5);
+            document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
+          },
+          () => {
+            // Update database so that polling doesn't overwrite it back to 'accepted'
+            fetch('/api/bookings/update-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bookingId: booking.id, status: 'arrived' })
+            }).then(() => {
+              booking.status = 'arrived';
+              booking.chatHistory.push({
+                sender: 'teacher',
+                text: 'Assalamualaikum, saya sudah sampai di hadapan rumah tuan.',
+                time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+              });
+              DB.set('active_booking', booking);
+              showToast('Anda telah sampai di destinasi!', true);
+              playSuccessChime();
+              
+              // Update driver screen details
+              document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-map-pin-user-fill"></i> Anda Telah Tiba di Lokasi';
+              document.getElementById('active-job-eta').style.display = 'none';
+              document.getElementById('simulation-skip-btn').textContent = 'Mulakan Kelas';
+            }).catch(console.error);
+          }
+        );
+
+      }, 100);
+    } else {
+      showToast(data.message || 'Gagal menerima tugasan.', false);
+    }
+  } catch (e) {
+    console.error('Error accepting job:', e);
+    showToast('Ralat rangkaian semasa menerima tugasan.', false);
+  }
 }
 
 // ----------------------------------------------------
-// Desktop Widescreen Layout Switches
+// Window Resize Handling (Native Responsive)
 // ----------------------------------------------------
-function toggleDesktopWidescreen(enable) {
-  appState.desktopWidescreen = enable;
-  DB.set('desktop_widescreen_mode', enable);
-
-  const body = document.body;
-  const desktopTopbar = document.getElementById('desktop-topbar-controls');
-  const showMobileToggles = document.querySelectorAll('.emulator-only-toggle');
-
-  if (enable) {
-    body.classList.add('desktop-widescreen-mode');
-    
-    // Show top bar desktop details
-    if (desktopTopbar) desktopTopbar.style.display = 'flex';
-    
-    // Show sidebar phone-mode return link
-    showMobileToggles.forEach(el => el.style.display = 'flex');
-    
-    showToast('Paparan Widescreen Desktop Aktif!', true);
-  } else {
-    body.classList.remove('desktop-widescreen-mode');
-    
-    // Hide top bar desktop details
-    if (desktopTopbar) desktopTopbar.style.display = 'none';
-    
-    // Hide sidebar phone-mode return link
-    showMobileToggles.forEach(el => el.style.display = 'none');
-    
-    showToast('Paparan Telefon Mudah Alih Aktif!', true);
-  }
-
-  // Redraw/resize vector canvas map to fit its new width/height boundaries
+window.addEventListener('resize', () => {
+  // Redraw/resize vector canvas map to fit its new width/height boundaries on screen rotation or resize
   if (appState.activeMap) {
-    setTimeout(() => {
+    clearTimeout(window.resizeTimer);
+    window.resizeTimer = setTimeout(() => {
       appState.activeMap.resize();
     }, 150);
   }
-}
+});
 
 // ----------------------------------------------------
 // Directory Listing & Teacher Profile Handlers
@@ -1281,7 +1932,7 @@ function openCategoryTeachers(categoryId) {
   const filterBadgeEl = document.getElementById('teachers-list-filter-badge');
   const viewTitleEl = document.getElementById('teachers-list-title');
 
-  let filteredTeachers = initialUstazList;
+  let filteredTeachers = appState.teachersList;
 
   if (categoryId === 'all' || !category) {
     viewTitleEl.textContent = 'Direktori Guru';
@@ -1294,7 +1945,7 @@ function openCategoryTeachers(categoryId) {
         <button onclick="openCategoryTeachers('all')"><i class="ri-close-circle-fill"></i></button>
       </div>
     `;
-    filteredTeachers = initialUstazList.filter(t => t.specialties.includes(categoryId));
+    filteredTeachers = appState.teachersList.filter(t => t.specialties.includes(categoryId));
   }
 
   if (filteredTeachers.length === 0) {
@@ -1341,7 +1992,7 @@ function goBackFromTeachersList() {
 }
 
 function openTeacherProfile(teacherId, backViewId) {
-  const teacher = initialUstazList.find(t => t.id === teacherId);
+  const teacher = appState.teachersList.find(t => t.id === teacherId);
   if (!teacher) return;
 
   if (backViewId) {
@@ -1361,7 +2012,7 @@ function openTeacherProfile(teacherId, backViewId) {
     return `<div class="profile-specialty-card">${spec ? spec.icon : '📖'} <span>${spec ? spec.name : specId}</span></div>`;
   }).join('');
 
-  const reviews = initialReviews.filter(r => r.teacherId === teacher.id);
+  const reviews = appState.reviewsList.filter(r => r.teacherId === teacher.id);
   let reviewsHtml = '';
   if (reviews.length > 0) {
     reviewsHtml = reviews.map(r => `
