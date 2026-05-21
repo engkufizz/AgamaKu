@@ -592,6 +592,7 @@ function startPollingActiveBookings() {
         console.error('Error syncing active partner booking:', err);
       }
     }
+    }
     
     // B. Student Mode: listen for updates on active bookings (searching, accepted, arrived, started, completed)
     if (appState.currentUser.role === 'user' && appState.currentBooking) {
