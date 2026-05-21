@@ -32,6 +32,7 @@ lerna-debug.log*
 *.db
 *.sqlite
 *.sqlite3
+agamaku.db
 
 # 🛠️ Editor & IDE Configuration Files
 .vscode/

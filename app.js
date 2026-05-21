@@ -14,7 +14,8 @@ let appState = {
   profileBackView: 'home-view',
   teachersList: [],
   reviewsList: [],
-  pollingInterval: null
+  pollingInterval: null,
+  userLocation: null
 };
 
 // Initial User Profile setup if not already in local storage
@@ -67,6 +68,33 @@ window.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
 
+// Fetch user location
+async function fetchUserLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      appState.userLocation = DEFAULT_USER_LOCATION;
+      resolve();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        appState.userLocation = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        resolve();
+      },
+      (err) => {
+        console.warn('Geolocation failed/denied, using default KL Sentral location.', err);
+        appState.userLocation = DEFAULT_USER_LOCATION;
+        resolve();
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  });
+}
+
 async function initApp() {
   const savedUser = localStorage.getItem('agamaku_user');
   if (savedUser) {
@@ -74,8 +102,11 @@ async function initApp() {
       appState.currentUser = JSON.parse(savedUser);
       appState.currentBooking = DB.get('active_booking', null);
       
-      // Load latest database records
-      await loadDatabaseData();
+      // Load latest database records and get location
+      await Promise.all([
+        loadDatabaseData(),
+        fetchUserLocation()
+      ]);
 
       document.getElementById('home-user-name').textContent = appState.currentUser.fullname;
       updateUserProfileUI();
@@ -481,7 +512,25 @@ function startPollingActiveBookings() {
             const bookings = await res.json();
             const currentDbBooking = bookings.find(b => b.id === appState.currentBooking.id);
             
-            if (currentDbBooking && currentDbBooking.status !== appState.currentBooking.status) {
+            if (currentDbBooking) {
+              // Check for chat updates
+              if (currentDbBooking.chatHistory) {
+                try {
+                  const dbChat = JSON.parse(currentDbBooking.chatHistory);
+                  if (dbChat.length > appState.currentBooking.chatHistory.length) {
+                    appState.currentBooking.chatHistory = dbChat;
+                    DB.set('active_booking', appState.currentBooking);
+                    if (appState.activeView === 'chat-view') {
+                      renderChatHistory();
+                    } else {
+                      showToast('Mesej baru dari pelajar!', true);
+                      playAudioTone(783.99, 'triangle', 200);
+                    }
+                  }
+                } catch (e) {}
+              }
+
+              if (currentDbBooking.status !== appState.currentBooking.status) {
               const newStatus = currentDbBooking.status;
               appState.currentBooking = mapDatabaseBookingToAppState(currentDbBooking);
               DB.set('active_booking', appState.currentBooking);
@@ -552,7 +601,25 @@ function startPollingActiveBookings() {
           const bookings = await res.json();
           const currentDbBooking = bookings.find(b => b.id === appState.currentBooking.id);
           
-          if (currentDbBooking && currentDbBooking.status !== appState.currentBooking.status) {
+          if (currentDbBooking) {
+            // Check for chat updates
+            if (currentDbBooking.chatHistory) {
+              try {
+                const dbChat = JSON.parse(currentDbBooking.chatHistory);
+                if (dbChat.length > appState.currentBooking.chatHistory.length) {
+                  appState.currentBooking.chatHistory = dbChat;
+                  DB.set('active_booking', appState.currentBooking);
+                  if (appState.activeView === 'chat-view') {
+                    renderChatHistory();
+                  } else {
+                    showToast('Mesej baru dari Ustaz!', true);
+                    playAudioTone(783.99, 'triangle', 200);
+                  }
+                }
+              } catch (e) {}
+            }
+
+            if (currentDbBooking.status !== appState.currentBooking.status) {
             const oldStatus = appState.currentBooking.status;
             const newStatus = currentDbBooking.status;
             
@@ -624,7 +691,19 @@ function startPollingActiveBookings() {
 function mapDatabaseBookingToAppState(dbBooking) {
   const teacher = appState.teachersList.find(t => t.id === dbBooking.teacherId);
   const service = initialServices.find(s => s.id === dbBooking.serviceId) || { name: 'Kelas Agama', icon: '🕌' };
-  
+  let chatArray = [];
+  if (dbBooking.chatHistory) {
+    try {
+      chatArray = JSON.parse(dbBooking.chatHistory);
+    } catch (e) {
+      chatArray = [];
+    }
+  } else if (dbBooking.status !== 'searching') {
+    chatArray = [
+      { sender: 'teacher', text: 'Assalamualaikum. Saya telah menerima tugasan kelas anda. Saya sedang bergerak ke alamat anda sekarang.', time: '16:47' }
+    ];
+  }
+
   return {
     id: dbBooking.id,
     serviceId: dbBooking.serviceId,
@@ -638,9 +717,7 @@ function mapDatabaseBookingToAppState(dbBooking) {
     teacher: teacher,
     status: dbBooking.status,
     clientName: dbBooking.clientName || 'Sarah Amira',
-    chatHistory: [
-      { sender: 'teacher', text: 'Assalamualaikum. Saya telah menerima tugasan kelas anda. Saya sedang bergerak ke alamat anda sekarang.', time: '16:47' }
-    ]
+    chatHistory: chatArray
   };
 }
 
@@ -678,14 +755,26 @@ function renderFeaturedTeachers() {
   const container = document.getElementById('featured-teachers-container');
   container.innerHTML = '';
 
-  // Draw first 3 teachers
-  appState.teachersList.slice(0, 3).forEach(teacher => {
+  const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+
+  // Calculate distances and sort
+  const teachersWithDistance = appState.teachersList.map(t => {
+    let dist = 0;
+    if (t.coordinates && t.coordinates.lat) {
+      dist = calculateDistanceKm(userLoc.lat, userLoc.lng, t.coordinates.lat, t.coordinates.lng);
+    }
+    return { ...t, distance: dist };
+  }).sort((a, b) => a.distance - b.distance);
+
+  // Draw first 3 closest teachers
+  teachersWithDistance.slice(0, 3).forEach(teacher => {
     const specialtiesText = teacher.specialties.map(specId => {
       const spec = initialServices.find(s => s.id === specId);
       return `<span class="specialty-tag">${spec ? spec.name.split(' ')[0] : specId}</span>`;
     }).join(' ');
 
     const verifiedBadge = teacher.verified ? `<i class="ri-verified-badge-fill" style="color:var(--color-primary-light); font-size:14px; margin-left:4px;"></i>` : '';
+    const distanceBadge = `<span style="font-size:11px; background:rgba(16,185,129,0.15); color:var(--color-primary-light); padding:2px 6px; border-radius:4px; margin-left:auto;"><i class="ri-map-pin-2-fill"></i> ${teacher.distance.toFixed(1)} km</span>`;
 
     const card = document.createElement('div');
     card.className = 'teacher-item-card';
@@ -693,14 +782,14 @@ function renderFeaturedTeachers() {
     card.innerHTML = `
       <div class="teacher-item-avatar">${teacher.avatar}</div>
       <div class="teacher-item-details">
-        <div class="teacher-item-name-row">
+        <div class="teacher-item-name-row" style="display:flex; align-items:center; width:100%;">
           <span class="teacher-item-name">${teacher.name}${verifiedBadge}</span>
-          <span class="teacher-item-rating">⭐ ${teacher.rating.toFixed(1)}</span>
+          ${distanceBadge}
         </div>
         <div class="teacher-item-specialties">
           ${specialtiesText}
         </div>
-        <div class="teacher-item-rate">RM ${teacher.hourlyRate.toFixed(2)}<span>/jam</span></div>
+        <div class="teacher-item-rate">RM ${teacher.hourlyRate.toFixed(2)}<span>/jam</span> &nbsp;·&nbsp; ⭐ ${teacher.rating.toFixed(1)}</div>
       </div>
     `;
     container.appendChild(card);
@@ -1032,14 +1121,15 @@ function initJourneyMap() {
   if (!appState.currentBooking || !appState.currentBooking.teacher) return;
   const teacher = appState.currentBooking.teacher;
 
-  // Initialize canvas map
-  const map = new AgamaKuMap('mapCanvas', { x: 0.5, y: 0.5 });
+  // Initialize leaflet map
+  const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+  const map = new AgamaKuMap('mapContainer', userLoc);
   appState.activeMap = map;
 
   // Set initial coordinates of matched teacher
   map.setUstaz({
-    x: teacher.coordinates.x,
-    y: teacher.coordinates.y,
+    lat: teacher.coordinates.lat,
+    lng: teacher.coordinates.lng,
     avatar: teacher.avatar,
     name: teacher.name
   });
@@ -1096,12 +1186,12 @@ function startAutomaticTeacherMovement() {
   const booking = appState.currentBooking;
   if (!booking || booking.status !== 'accepted') return;
 
-  // Animate over 15 seconds
+  // Animate over 12 seconds
   setTimeout(() => {
     if (!appState.activeMap || appState.activeView !== 'active-job-view') return;
     
     const startCoord = booking.teacher.coordinates;
-    const endCoord = { x: 0.5, y: 0.5 };
+    const endCoord = appState.userLocation || DEFAULT_USER_LOCATION;
 
     appState.activeMap.animateUstazJourney(
       startCoord, 
@@ -1121,6 +1211,16 @@ function startAutomaticTeacherMovement() {
           time: '16:52'
         });
         DB.set('active_booking', booking);
+
+        // Sync the automated chat message to server
+        try {
+          fetch('/api/bookings/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId: booking.id, chatHistory: booking.chatHistory })
+          });
+        } catch (e) {}
+
         showToast('Ustaz telah sampai di alamat anda!', true);
         playSuccessChime();
         updateJourneyUIStates();
@@ -1141,7 +1241,8 @@ async function simulateActiveJobNextStep() {
       appState.activeMap.stopSearching();
       const avatar = booking.teacher ? booking.teacher.avatar : '👳‍♂️';
       const name = booking.teacher ? booking.teacher.name : 'Anda';
-      appState.activeMap.setUstaz({ x: 0.5, y: 0.5, avatar: avatar, name: name });
+      const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+      appState.activeMap.setUstaz({ lat: userLoc.lat, lng: userLoc.lng, avatar: avatar, name: name });
     }
     
     try {
@@ -1160,6 +1261,15 @@ async function simulateActiveJobNextStep() {
         });
         DB.set('active_booking', booking);
         
+        // Sync the automated chat message to server
+        try {
+          await fetch('/api/bookings/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId: booking.id, chatHistory: booking.chatHistory })
+          });
+        } catch (e) {}
+
         if (isPartner) {
           showToast('Anda telah sampai di destinasi!', true);
         } else {
@@ -1189,6 +1299,16 @@ async function simulateActiveJobNextStep() {
           time: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
         });
         DB.set('active_booking', booking);
+
+        // Sync the automated chat message to server
+        try {
+          await fetch('/api/bookings/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId: booking.id, chatHistory: booking.chatHistory })
+          });
+        } catch (e) {}
+
         showToast('Sesi kelas dimulakan!', true);
         updateJourneyUIStates();
       }
@@ -1900,24 +2020,30 @@ async function acceptIncomingJob() {
       document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
       document.getElementById('active-job-eta').textContent = 'ETA: 5 min';
 
-      // Instantiate live canvas map. User stays at center, Driver moves from candidates coords to center!
+      // Instantiate live map. User stays at location, Driver moves from candidates coords to user!
       setTimeout(() => {
-        const map = new AgamaKuMap('mapCanvas', { x: 0.5, y: 0.5 });
+        const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+        const map = new AgamaKuMap('mapContainer', userLoc);
         appState.activeMap = map;
         
-        // Set starting position of driver at the edges
-        const startCoord = { x: 0.15, y: 0.25 };
+        // Set starting position of driver at the ustaz actual coordinates
+        let startCoord = DEFAULT_USER_LOCATION;
+        const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+        if (teacherData && teacherData.coordinates) {
+          startCoord = teacherData.coordinates;
+        }
+
         map.setUstaz({
-          x: startCoord.x,
-          y: startCoord.y,
+          lat: startCoord.lat,
+          lng: startCoord.lng,
           avatar: '👳‍♂️',
           name: 'Anda'
         });
 
-        // Animate driver moving to center over 12 seconds
+        // Animate driver moving to user over 12 seconds
         map.animateUstazJourney(
           startCoord,
-          { x: 0.5, y: 0.5 },
+          userLoc,
           12000,
           (progress) => {
             const etaMins = Math.ceil((1 - progress) * 5);
@@ -2006,13 +2132,25 @@ function openCategoryTeachers(categoryId) {
       </div>
     `;
   } else {
-    filteredTeachers.forEach(teacher => {
+    const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+    
+    // Calculate distances and sort
+    const teachersWithDistance = filteredTeachers.map(t => {
+      let dist = 0;
+      if (t.coordinates && t.coordinates.lat) {
+        dist = calculateDistanceKm(userLoc.lat, userLoc.lng, t.coordinates.lat, t.coordinates.lng);
+      }
+      return { ...t, distance: dist };
+    }).sort((a, b) => a.distance - b.distance);
+
+    teachersWithDistance.forEach(teacher => {
       const specialtiesText = teacher.specialties.map(specId => {
         const spec = initialServices.find(s => s.id === specId);
         return `<span class="specialty-tag">${spec ? spec.name.split(' ')[0] : specId}</span>`;
       }).join(' ');
 
       const verifiedBadge = teacher.verified ? `<i class="ri-verified-badge-fill" style="color:var(--color-primary-light); font-size:14px; margin-left:4px;"></i>` : '';
+      const distanceBadge = `<span style="font-size:11px; background:rgba(16,185,129,0.15); color:var(--color-primary-light); padding:2px 6px; border-radius:4px; margin-left:auto;"><i class="ri-map-pin-2-fill"></i> ${teacher.distance.toFixed(1)} km</span>`;
 
       const card = document.createElement('div');
       card.className = 'teacher-item-card';
@@ -2020,14 +2158,14 @@ function openCategoryTeachers(categoryId) {
       card.innerHTML = `
         <div class="teacher-item-avatar">${teacher.avatar}</div>
         <div class="teacher-item-details">
-          <div class="teacher-item-name-row">
+          <div class="teacher-item-name-row" style="display:flex; align-items:center; width:100%;">
             <span class="teacher-item-name">${teacher.name}${verifiedBadge}</span>
-            <span class="teacher-item-rating">⭐ ${teacher.rating.toFixed(1)}</span>
+            ${distanceBadge}
           </div>
           <div class="teacher-item-specialties">
             ${specialtiesText}
           </div>
-          <div class="teacher-item-rate">RM ${teacher.hourlyRate.toFixed(2)}<span>/jam</span></div>
+          <div class="teacher-item-rate">RM ${teacher.hourlyRate.toFixed(2)}<span>/jam</span> &nbsp;·&nbsp; ⭐ ${teacher.rating.toFixed(1)}</div>
         </div>
       `;
       container.appendChild(card);

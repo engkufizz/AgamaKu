@@ -701,10 +701,47 @@ body {
   position: relative;
 }
 
-.map-canvas {
+.map-container {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+/* Leaflet overrides for Dark Emerald Theme */
+.leaflet-container {
+  background-color: var(--color-bg-dark) !important;
+  font-family: var(--font-primary) !important;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background-color: rgba(13, 22, 20, 0.95) !important;
+  color: var(--color-text-primary) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-radius: 12px;
+}
+
+.agamaku-marker {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.agamaku-marker-pulse::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--color-primary);
+  animation: pulse-ring 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
 }
 
 /* Floating overlay inside map screen */

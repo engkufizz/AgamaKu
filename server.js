@@ -215,10 +215,10 @@ const server = http.createServer(async (req, res) => {
           const badges = JSON.stringify(['Bertauliah', 'Guru Baru']);
           const phone = body.phone || '+60 12-345 6789';
           
-          // Generate semi-random map coordinates within the standard area
+          // Generate semi-random map coordinates within the standard area (KL Area)
           const coordinates = JSON.stringify({
-            x: 0.2 + Math.random() * 0.6,
-            y: 0.2 + Math.random() * 0.6
+            lat: 3.12 + Math.random() * 0.06,  // ~3.12 to 3.18
+            lng: 101.66 + Math.random() * 0.08 // ~101.66 to 101.74
           });
 
           await dbRun(`

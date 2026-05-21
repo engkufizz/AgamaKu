@@ -13,9 +13,10 @@ The application features a **Dual-Mode Simulator**:
 
 ### 🛠️ Technology Stack
 - **Frontend**: Pure HTML5 (semantic layout), Vanilla CSS3 (custom variables, responsive grids, advanced animations), and Vanilla Javascript (ES6 modular patterns).
-- **Mapping**: Interactive road networks and real-time pin travels drawn on a custom 2D `<canvas>` element using vector math.
+- **Mapping**: Interactive road networks and real-time pin travels drawn on a real **Leaflet.js** map instance connected to **OpenStreetMap** tiles, with real street routing paths calculated by the **Open Source Routing Machine (OSRM)** API.
+- **Location**: Uses browser `navigator.geolocation` API to pinpoint the user's exact GPS coordinates.
 - **Audio Soundscapes**: In-browser sound synthesis utilizing the **Web Audio API** (generates pure custom sound frequencies on request—no static `.mp3` assets required).
-- **Backend/Hosting**: Lightweight Node.js developer server with automated port scanning fallback (ports 3000, 3001, etc.) and automatic Wi-Fi IP address identification for mobile phone debugging.
+- **Backend/Hosting**: Lightweight Node.js developer server with automated port scanning fallback, connected to an internal **SQLite** database for real-time bookings, ratings, and live chat syncing.
 
 ---
 
@@ -73,10 +74,10 @@ Houses the static mock databases that serve the application:
 - `initialReviews`: Dynamic list of ratings and student feedback comments.
 
 ### 📄 [map.js](file:///d:/Tengku/AgamaKu/map.js)
-A custom vector road, landscape, and pin simulation engine:
-- Connects to an HTML5 `<canvas>` element.
-- Automatically paints roads, water reservoirs, parks, and religious structures (e.g. Masjid Wilayah, Surau Al-Ikhlas) using structured lines and vector coordinates.
-- Implements `drawPin()` and `drawPath()` routines to calculate and animate smooth movements from a teacher's starting location directly to the user's home location in real time.
+A custom mapping engine bridging Leaflet.js with the Open Source Routing Machine (OSRM):
+- Connects to an HTML5 `<div id="mapContainer">` element and injects Leaflet map tiles.
+- Animates real-time custom SVG avatar markers along valid street geometries parsed from OSRM GeoJSON routes.
+- Handles pulsing search radius circles and automatic map bounds fitting.
 
 ### 📄 [app.js](file:///d:/Tengku/AgamaKu/app.js)
 The core operational logic and state machine of AgamaKu:
@@ -87,15 +88,15 @@ The core operational logic and state machine of AgamaKu:
     partnerOnline: false,          // Partner availability toggle
     activeBooking: null,           // Current active class information
     selectedTeacher: null,         // Object of locked teacher (or null)
-    profileBackView: 'home',       // Back button history cache ('home' vs 'directory')
+    userLocation: null,            // Browser Geolocation Lat/Lng
     // ... tracking states, messages, timers
   };
   ```
-- **Booking Flow Dispatcher**:
-  - Automatically calculates rates dynamically based on the locked teacher's specific price sheet.
+- **Booking & Chat Polling Dispatcher**:
+  - Automatically polls `/api/bookings` and `/api/bookings/chat` for real-time status and chat synchronization across devices.
   - Manages the transition from category directory scans -> detailed biography reviews -> pre-locked bookings.
-  - Connects matched jobs to either a 4-second simulated route (for other pre-selected teachers) or a multi-synthesizer alert loop (when reserving Ustaz Zulkifli Harun while partner mode is online).
-- **Web Audio Chime Loop**: Integrates the standard synthesizer (`playNotificationSound()`) that generates pure golden major-triad acoustic tones dynamically when incoming jobs arrive.
+  - Connects matched jobs to a multi-synthesizer alert loop.
+- **Web Audio Chime Loop**: Integrates the standard synthesizer (`playNotificationSound()`) that generates pure golden major-triad acoustic tones dynamically when incoming jobs arrive or chat messages are received.
 
 ### 📄 [server.js](file:///d:/Tengku/AgamaKu/server.js)
 A robust Node.js development server utilizing the built-in HTTP module:

@@ -1,4 +1,20 @@
 // AgamaKu App Mock Database & Configuration
+
+// Default user location (KL Sentral area) — used when GPS is denied
+const DEFAULT_USER_LOCATION = { lat: 3.1340, lng: 101.6866 };
+
+// Haversine formula — calculate real distance between two GPS points in km
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 const initialServices = [
   {
     id: 'mengaji',
@@ -71,7 +87,7 @@ const initialUstazList = [
     verified: true,
     badges: ['Al-Azhar Grad', 'Tajwid Specialist', 'Top Rated'],
     phone: '+60 12-345 6789',
-    coordinates: { x: 0.35, y: 0.42 } // Normalized canvas coordinates
+    coordinates: { lat: 3.1520, lng: 101.7080 } // Ampang, KL
   },
   {
     id: 'ustazah_fatimah',
@@ -86,7 +102,7 @@ const initialUstazList = [
     verified: true,
     badges: ['Quran Masters', 'Patient Teacher', 'Kids Favorite'],
     phone: '+60 17-987 6543',
-    coordinates: { x: 0.65, y: 0.35 }
+    coordinates: { lat: 3.1600, lng: 101.7200 } // Taman Melati, KL
   },
   {
     id: 'ustaz_zulkifli',
@@ -101,7 +117,7 @@ const initialUstazList = [
     verified: true,
     badges: ['Former Imam', 'Ruqyah Certified', 'Eloquent Speaker'],
     phone: '+60 13-222 8899',
-    coordinates: { x: 0.28, y: 0.72 }
+    coordinates: { lat: 3.1280, lng: 101.6750 } // Bangsar, KL
   },
   {
     id: 'ustazah_aisyah',
@@ -116,7 +132,7 @@ const initialUstazList = [
     verified: true,
     badges: ['Arabic Linguist', 'Tadabbur Expert', 'Perfect 5.0'],
     phone: '+60 19-333 4455',
-    coordinates: { x: 0.58, y: 0.68 }
+    coordinates: { lat: 3.1400, lng: 101.6950 } // Mid Valley, KL
   },
   {
     id: 'ustaz_luqman',
@@ -131,7 +147,7 @@ const initialUstazList = [
     verified: false,
     badges: ['Certified Hafiz', 'Youth Friendly'],
     phone: '+60 11-555 7788',
-    coordinates: { x: 0.75, y: 0.55 }
+    coordinates: { lat: 3.1650, lng: 101.7100 } // Wangsa Maju, KL
   }
 ];
 

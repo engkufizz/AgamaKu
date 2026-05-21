@@ -23,16 +23,18 @@ The platform is designed with a premium, high-end **Islamic HSL Emerald & Gold t
   - Receive real-time audio chimes for incoming classes.
   - Accept or decline bookings, review active students, and manage ongoing classes.
 
-### 3. 🗺️ Custom 2D Vector Mapping Engine
-- Uses an HTML5 `<canvas>` element and vector mathematics to paint streets, parks, water reservoirs, and local landmarks (e.g. *Masjid Wilayah*, *Surau Al-Ikhlas*).
-- Animates real-time pin travel along paths connecting the teacher's starting location directly to the student's home.
+### 3. 🗺️ Real-time GPS Mapping Engine
+- Uses **Leaflet.js** integrated with **OpenStreetMap** to render a beautiful real-world interactive map.
+- Leverages the **Open Source Routing Machine (OSRM)** API to draw actual road geometries and calculate realistic drive times.
+- Connects to the browser's `navigator.geolocation` API to use the student's real-world GPS location as the delivery destination.
 
 ### 4. 🎵 Synthesized Audio Soundscapes
-- Leverages the **Web Audio API** to synthesize beautiful major-triad acoustic chime alerts in-browser for incoming booking alerts. 
+- Leverages the **Web Audio API** to synthesize beautiful major-triad acoustic chime alerts in-browser for incoming booking alerts and live chat messages. 
 - *No static MP3/WAV assets required!*
 
 ### 5. 🛠️ Intelligent Development Server
 - Standard Node.js backend utilizing the native `http` module.
+- Includes a fully functional **SQLite database** to store persistent user balances, bookings, completed history, and real-time live chat messages between the Student and Partner.
 - Includes a **port fallback scan loop** (automatically tries port 3000, 3001, etc. if port is already in use).
 - Broadcasts the computer's **local network Wi-Fi IP address** in the terminal so you can scan and test the application directly on physical mobile devices!
 
@@ -43,9 +45,9 @@ The platform is designed with a premium, high-end **Islamic HSL Emerald & Gold t
 * **[`index.html`](index.html)**: Central semantic markup hosting all dynamic view containers (Home, Directory, Profile, Booking, Radar, Active Map, Partner Dashboard).
 * **[`styles.css`](styles.css)**: Glassmorphism tokens, emerald-to-gold HSL color palettes, phone layout wrappers, keyframes (`pulse-avatar`, `scan-line`), and responsive widescreen grid reflows.
 * **[`data.js`](data.js)**: Static database lists covering service specs, detailed teacher profiles, hourly rates, and ratings/reviews.
-* **[`map.js`](map.js)**: Vector path drawing calculations, street grid canvas renderers, and real-time pin travel animate formulas.
-* **[`app.js`](app.js)**: Central state machine (`appState`) managing views, dispatching matched searches, triggering audio pings, and handling student/teacher chat history.
-* **[`server.js`](server.js)**: Port-scanning Node server displaying Wi-Fi connection URLs for cross-device testing.
+* **[`map.js`](map.js)**: Wrapper engine bridging Leaflet.js tiles with Open Source Routing Machine (OSRM) GeoJSON vectors for live driving paths.
+* **[`app.js`](app.js)**: Central state machine (`appState`) managing views, dispatching matched searches, and syncing database polling states for live chat.
+* **[`server.js`](server.js)**: Node.js HTTP server utilizing a local SQLite database for data persistence and a port-scanning utility for cross-device testing.
 * **[`GEMINI.md`](GEMINI.md)**: Exhaustive engineering document outlining algorithms, database keys, and test sequences for developers and AI session agents.
 
 ---
