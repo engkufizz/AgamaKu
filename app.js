@@ -153,6 +153,7 @@ async function initApp() {
         }
         
         startPollingActiveBookings();
+        updateUIWalletBalances();
         updatePartnerDashboardStats();
       } else {
         appState.partnerUser = defaultPartner;
@@ -740,7 +741,9 @@ function mapDatabaseBookingToAppState(dbBooking) {
     teacher: teacher,
     status: dbBooking.status,
     clientName: dbBooking.clientName || 'Sarah Amira',
-    chatHistory: chatArray
+    chatHistory: chatArray,
+    studentLat: dbBooking.studentLat,
+    studentLng: dbBooking.studentLng
   };
 }
 
@@ -1090,7 +1093,9 @@ async function startBookingSearch() {
         date: date,
         time: time,
         duration: hours,
-        totalPrice: price
+        totalPrice: price,
+        studentLat: appState.userLocation ? appState.userLocation.lat : null,
+        studentLng: appState.userLocation ? appState.userLocation.lng : null
       })
     });
 
@@ -1545,18 +1550,27 @@ function recoverActiveBooking() {
 
       if (booking.status === 'accepted') {
         setTimeout(async () => {
-          const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
-          const map = new AgamaKuMap('mapContainer', userLoc);
+          const destLoc = (booking.studentLat && booking.studentLng) 
+            ? { lat: booking.studentLat, lng: booking.studentLng } 
+            : DEFAULT_USER_LOCATION;
+            
+          const map = new AgamaKuMap('mapContainer', destLoc);
           appState.activeMap = map;
           
-          let startCoord = DEFAULT_USER_LOCATION;
-          const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
-          if (teacherData && teacherData.coordinates) startCoord = teacherData.coordinates;
+          let startCoord = appState.userLocation;
+          if (!startCoord) {
+            const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+            if (teacherData && teacherData.coordinates) {
+              startCoord = teacherData.coordinates;
+            } else {
+              startCoord = DEFAULT_USER_LOCATION;
+            }
+          }
           
           map.setUstaz({ lat: startCoord.lat, lng: startCoord.lng, avatar: '👳‍♂️', name: 'Anda' });
-          try { await map.drawRoute(startCoord, userLoc); } catch (e) {}
+          try { await map.drawRoute(startCoord, destLoc); } catch (e) {}
           
-          startDriverGPSTracking(booking.id, userLoc);
+          startDriverGPSTracking(booking.id, destLoc);
         }, 100);
       }
     } else {
@@ -2255,18 +2269,27 @@ async function acceptIncomingJob() {
       document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
       document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
       document.getElementById('active-job-eta').textContent = 'Mengesan lokasi GPS...';
+      document.getElementById('class-timer-box').style.display = 'none';
+      stopClassDurationTimer();
 
       // Instantiate live map with the student's (destination) location
       setTimeout(async () => {
-        const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
-        const map = new AgamaKuMap('mapContainer', userLoc);
+        const destLoc = (booking.studentLat && booking.studentLng) 
+          ? { lat: booking.studentLat, lng: booking.studentLng } 
+          : DEFAULT_USER_LOCATION;
+          
+        const map = new AgamaKuMap('mapContainer', destLoc);
         appState.activeMap = map;
         
-        // Get driver starting position from teacher coordinates
-        let startCoord = DEFAULT_USER_LOCATION;
-        const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
-        if (teacherData && teacherData.coordinates) {
-          startCoord = teacherData.coordinates;
+        // Get driver starting position from actual physical location, or fallback to profile
+        let startCoord = appState.userLocation;
+        if (!startCoord) {
+          const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+          if (teacherData && teacherData.coordinates) {
+            startCoord = teacherData.coordinates;
+          } else {
+            startCoord = DEFAULT_USER_LOCATION;
+          }
         }
 
         // Place driver marker at initial position
@@ -2279,13 +2302,13 @@ async function acceptIncomingJob() {
 
         // Draw the static route for reference
         try {
-          await map.drawRoute(startCoord, userLoc);
+          await map.drawRoute(startCoord, destLoc);
         } catch (e) {
           console.warn('Could not draw route:', e);
         }
 
         // Start real GPS tracking using watchPosition
-        startDriverGPSTracking(booking.id, userLoc);
+        startDriverGPSTracking(booking.id, destLoc);
 
       }, 100);
     } else {

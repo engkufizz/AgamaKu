@@ -112,7 +112,9 @@ async function initDatabase() {
         totalPrice REAL NOT NULL,
         status TEXT NOT NULL,
         createdAt TEXT NOT NULL,
-        chatHistory TEXT
+        chatHistory TEXT,
+        studentLat REAL,
+        studentLng REAL
       )
     `);
 
@@ -138,10 +140,14 @@ async function initDatabase() {
     try {
       await dbRun('ALTER TABLE bookings ADD COLUMN chatHistory TEXT');
       console.log('🩹 Added missing "chatHistory" column to bookings table.');
-    } catch (alterErr) {
-      // Column already exists, safe to ignore
-    }
+    } catch (alterErr) {}
 
+    // Ensure student GPS location columns exist in bookings table
+    try {
+      await dbRun('ALTER TABLE bookings ADD COLUMN studentLat REAL');
+      await dbRun('ALTER TABLE bookings ADD COLUMN studentLng REAL');
+      console.log('🩹 Added missing student GPS columns to bookings table.');
+    } catch (alterErr) {}
     console.log('✅ SQLite Tables Initialized Successfully!');
     await seedDatabase();
   } catch (error) {
@@ -388,9 +394,9 @@ const server = http.createServer(async (req, res) => {
         const createdAt = new Date().toISOString();
 
         await dbRun(`
-          INSERT INTO bookings (id, userId, teacherId, serviceId, date, time, duration, totalPrice, status, createdAt, chatHistory)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]')
-        `, [bookingId, body.userId, body.teacherId, body.serviceId, body.date, body.time, body.duration, body.totalPrice, 'searching', createdAt]);
+          INSERT INTO bookings (id, userId, teacherId, serviceId, date, time, duration, totalPrice, status, createdAt, chatHistory, studentLat, studentLng)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)
+        `, [bookingId, body.userId, body.teacherId, body.serviceId, body.date, body.time, body.duration, body.totalPrice, 'searching', createdAt, body.studentLat || null, body.studentLng || null]);
 
         const newBooking = await dbGet('SELECT b.*, u.fullname as clientName FROM bookings b JOIN users u ON b.userId = u.id WHERE b.id = ?', [bookingId]);
         return jsonResponse(res, 201, { success: true, booking: newBooking });
