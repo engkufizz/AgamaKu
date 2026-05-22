@@ -496,6 +496,38 @@ body {
 }
 
 /* ==========================================================================
+   Modal Overlays
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-card {
+  background: var(--color-bg-card);
+  border-radius: 16px;
+  border: var(--border-glow);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
    5. Booking Setup Screen
    ========================================================================== */
 .booking-form-area {
@@ -1864,15 +1896,25 @@ form {
   justify-content: center !important;
 }
 
-/* Profile screen centering */
-.profile-card {
-  max-width: 600px !important;
+/* Profile & Partner Dashboard screen centering and premium reflow */
+.profile-scroll-area,
+.partner-dash-scroll {
+  max-width: 850px !important;
   margin: 0 auto !important;
+  padding: 40px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
 }
 
+.profile-card,
 .profile-actions-list {
-  max-width: 600px !important;
-  margin: 0 auto !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+
+.partner-dash-scroll .section-title {
+  margin-top: 30px !important;
 }
 
 /* Interactive Dispatch Tracking View Split Screen */

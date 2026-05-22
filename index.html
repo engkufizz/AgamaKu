@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AgamaKu - Aplikasi Tempahan Ustaz & Ustazah Mudah Alih</title>
   <meta name="description" content="Tempah perkhidmatan Ustaz dan Ustazah bertauliah untuk Mengaji, Tadabbur, Ceramah, Doa Selamat, dan Ruqyah terus ke rumah anda dengan AgamaKu.">
-  <link rel="stylesheet" href="styles.css?v=2.0">
+  <link rel="stylesheet" href="styles.css?v=2.8">
   <!-- Remix Icons for gorgeous crisp modern iconography -->
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   
@@ -27,7 +27,7 @@
           <div class="view-container">
 
             <!-- 0. AUTH VIEW (LOGIN & REGISTER) -->
-            <div id="auth-view" class="view active">
+            <div id="auth-view" class="view">
               <div class="auth-scroll-area">
                 <div class="auth-brand">
                   <div class="auth-brand-logo">
@@ -415,7 +415,7 @@
             <!-- 6. WALLET VIEW -->
             <div id="wallet-view" class="view">
               <div class="view-header">
-                <div class="back-btn" onclick="navigateTo('home-view')">
+                <div class="back-btn" onclick="navigateBackFromWallet()">
                   <i class="ri-arrow-left-s-line"></i>
                 </div>
                 <span class="view-title">AgamaKu Pay</span>
@@ -562,7 +562,7 @@
                 <div class="user-profile-header">
                   <div class="header-avatar" style="background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold));" id="partner-avatar">👳‍♂️</div>
                   <div class="user-info">
-                    <span class="user-greeting">Ustaz,</span>
+                    <span class="user-greeting" id="partner-greeting-role">Ustaz,</span>
                     <span class="user-name" id="partner-name">Ustaz Zulkifli Harun</span>
                   </div>
                 </div>
@@ -659,20 +659,83 @@
                   <span>Utiliti Ustaz</span>
                 </div>
                 <div class="profile-actions-list">
-                  <div class="action-row" onclick="showToast('Konfigurasi yuran pembelajaran anda')">
+                  <div class="action-row" onclick="openTeacherSettingsModal()">
                     <div class="action-row-left">
                       <i class="ri-settings-4-fill action-icon"></i>
                       <span>Tetapan Kadar Jam & Jadual</span>
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
                   </div>
-                  <div class="action-row" onclick="showToast('Memaparkan pendaftaran sijil bertauliah')">
+                  <div class="action-row" onclick="openCertificationModal()">
                     <div class="action-row-left">
                       <i class="ri-award-fill action-icon" style="color:var(--color-gold);"></i>
                       <span>Tauliah Bertauliah JAWI/JAKIM</span>
                     </div>
                     <i class="ri-arrow-right-s-line action-arrow"></i>
                   </div>
+
+                <!-- Teacher Settings Modal -->
+                <div class="modal-overlay" id="teacher-settings-modal" style="display:none;">
+                  <div class="modal-card" style="max-width:420px; width:90%; padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                      <h3 style="margin:0; font-family:var(--font-display); font-size:18px; color:#fff;">⚙️ Tetapan Kadar & Jadual</h3>
+                      <button onclick="closeTeacherSettingsModal()" style="background:none; border:none; color:var(--color-text-muted); font-size:22px; cursor:pointer;">&times;</button>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">💰 Kadar Sejam (RM)</label>
+                      <input type="number" id="settings-hourly-rate" class="form-input" min="10" max="500" step="5" placeholder="35.00">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">📞 Nombor Telefon</label>
+                      <input type="text" id="settings-phone" class="form-input" placeholder="+60 12-345 6789">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">📝 Bio / Penerangan</label>
+                      <textarea id="settings-bio" class="form-textarea" placeholder="Tulis penerangan tentang diri anda..."></textarea>
+                    </div>
+                    <button class="btn-primary" onclick="saveTeacherSettings()" style="width:100%; margin-top:12px;">
+                      <i class="ri-save-3-fill"></i> Simpan Tetapan
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Certification Info Modal -->
+                <div class="modal-overlay" id="certification-modal" style="display:none;">
+                  <div class="modal-card" style="max-width:420px; width:90%; padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                      <h3 style="margin:0; font-family:var(--font-display); font-size:18px; color:#fff;">🏅 Tauliah JAWI/JAKIM</h3>
+                      <button onclick="closeCertificationModal()" style="background:none; border:none; color:var(--color-text-muted); font-size:22px; cursor:pointer;">&times;</button>
+                    </div>
+                    <div style="text-align:center; padding:20px 0;">
+                      <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg, rgba(234,179,8,0.2), rgba(16,185,129,0.2)); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:36px;">🏆</div>
+                      <div style="font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--color-primary-light); margin-bottom:4px;" id="cert-status-text">Status Tauliah</div>
+                      <div style="font-size:12px; color:var(--color-text-muted);" id="cert-details-text">Maklumat pensijilan anda</div>
+                    </div>
+                    <div style="background:var(--color-bg-panel); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+                      <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="color:var(--color-text-muted);">Nama</span>
+                        <span style="color:#fff; font-weight:600;" id="cert-name">-</span>
+                      </div>
+                      <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="color:var(--color-text-muted);">ID Guru</span>
+                        <span style="color:#fff; font-weight:600;" id="cert-teacher-id">-</span>
+                      </div>
+                      <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="color:var(--color-text-muted);">Status Pengesahan</span>
+                        <span style="color:var(--color-primary-light); font-weight:600;" id="cert-verified-status">✅ Disahkan</span>
+                      </div>
+                      <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="color:var(--color-text-muted);">Penarafan</span>
+                        <span style="color:var(--color-gold); font-weight:600;" id="cert-rating">⭐ 5.0</span>
+                      </div>
+                      <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="color:var(--color-text-muted);">Jumlah Ulasan</span>
+                        <span style="color:#fff; font-weight:600;" id="cert-reviews">0</span>
+                      </div>
+                    </div>
+                    <button class="btn-primary" onclick="closeCertificationModal()" style="width:100%; margin-top:16px;">Tutup</button>
+                  </div>
+                </div>
                   <div class="action-row" onclick="navigateTo('profile-view')">
                     <div class="action-row-left">
                       <i class="ri-user-settings-fill action-icon"></i>
@@ -705,7 +768,7 @@
 
           <!-- Navigation bottom bar (Swaps according to active mode: user vs partner) -->
           <div class="bottom-nav" id="app-bottom-nav">
-            <div class="nav-item active" onclick="navigateTo('home-view')" id="nav-home">
+            <div class="nav-item active" onclick="navigateHome()" id="nav-home">
               <i class="ri-home-7-fill"></i>
               <span>Utama</span>
             </div>
@@ -733,8 +796,8 @@
 
   <!-- Load script files (Dependencies logic) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="data.js?v=2.0"></script>
-  <script src="map.js?v=2.0"></script>
-  <script src="app.js?v=2.0"></script>
+  <script src="data.js?v=2.8"></script>
+  <script src="map.js?v=2.8"></script>
+  <script src="app.js?v=2.8"></script>
 </body>
 </html>

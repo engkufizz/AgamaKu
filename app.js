@@ -127,6 +127,13 @@ async function initApp() {
 
         document.getElementById('partner-name').textContent = appState.partnerUser.name;
         document.getElementById('partner-avatar').textContent = appState.partnerUser.avatar;
+        
+        const partnerGreeting = document.getElementById('partner-greeting-role');
+        if (partnerGreeting) {
+          const isFemale = appState.currentUser.gender === 'P' || appState.currentUser.gender === 'ustazah';
+          partnerGreeting.textContent = isFemale ? 'Ustazah,' : 'Ustaz,';
+        }
+        
         document.getElementById('mode-switch-toggle').classList.add('active');
         
         if (appState.partnerUser.online) {
@@ -139,8 +146,14 @@ async function initApp() {
           }
         }
 
-        navigateToPartnerDashboard();
+        if (appState.currentBooking) {
+          recoverActiveBooking();
+        } else {
+          navigateToPartnerDashboard();
+        }
+        
         startPollingActiveBookings();
+        updatePartnerDashboardStats();
       } else {
         appState.partnerUser = defaultPartner;
         document.getElementById('app-bottom-nav').style.display = 'flex';
@@ -744,7 +757,7 @@ function updateUIWalletBalances() {
   
   // Partner mode wallet bindings
   if (appState.partnerUser) {
-    const partnerBalance = appState.partnerUser.wallet !== undefined ? appState.partnerUser.wallet : 0;
+    const partnerBalance = appState.currentUser.balance !== undefined ? appState.currentUser.balance : 0;
     document.getElementById('partner-wallet-amount').textContent = `RM ${partnerBalance.toFixed(2)}`;
     document.getElementById('partner-stats-today').textContent = `RM ${appState.partnerUser.earningsToday.toFixed(2)}`;
     document.getElementById('partner-stats-week').textContent = `RM ${appState.partnerUser.earningsWeek.toFixed(2)}`;
@@ -846,11 +859,27 @@ function navigateTo(viewId) {
     document.getElementById('nav-profile').classList.add('active');
   }
 
-  // Redraw map canvas if entering live journey tracking
+// Redraw map canvas if entering live journey tracking
   if (viewId === 'active-job-view' && appState.currentBooking) {
     setTimeout(() => {
       initJourneyMap();
     }, 100);
+  }
+}
+
+function navigateBackFromWallet() {
+  if (appState.currentUser && appState.currentUser.role === 'partner') {
+    navigateTo('partner-home-view');
+  } else {
+    navigateTo('home-view');
+  }
+}
+
+function navigateHome() {
+  if (appState.currentUser && appState.currentUser.role === 'partner') {
+    navigateTo('partner-home-view');
+  } else {
+    navigateTo('home-view');
   }
 }
 
@@ -1202,6 +1231,18 @@ function updateJourneyUIStates() {
     skipBtn.style.display = 'flex';
     skipBtn.textContent = 'Mulakan Kelas';
     timerBox.style.display = 'none';
+
+    // Force synchronize the map marker to the destination on both devices
+    if (typeof stopDriverGPSTracking === 'function') stopDriverGPSTracking();
+    if (typeof stopTrackingTeacherLocation === 'function') stopTrackingTeacherLocation();
+    
+    if (appState.activeMap) {
+      appState.activeMap.stopSearching();
+      const avatar = isPartner ? '👳‍♂️' : (booking.teacher ? booking.teacher.avatar : '👨‍🏫');
+      const name = isPartner ? 'Anda' : (booking.teacher ? booking.teacher.name : 'Ustaz');
+      const destLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+      appState.activeMap.setUstaz({ lat: destLoc.lat, lng: destLoc.lng, avatar: avatar, name: name });
+    }
   } else if (booking.status === 'started') {
     badge.innerHTML = '<i class="ri-book-open-fill"></i> Sesi Kelas Berjalan';
     badge.className = 'status-badge-live';
@@ -1286,23 +1327,9 @@ async function simulateActiveJobNextStep() {
   const isPartner = appState.currentUser.role === 'partner';
 
   if (booking.status === 'accepted') {
-    // Stop GPS tracking since we're skipping the journey
+    // Stop tracking locally (updateJourneyUIStates will also do this globally when status syncs)
     stopDriverGPSTracking();
     stopTrackingTeacherLocation();
-    
-    // Instantly teleport Ustaz to destination
-    if (appState.activeMap) {
-      appState.activeMap.stopSearching();
-      const avatar = booking.teacher ? booking.teacher.avatar : '👨‍🏫';
-      const name = booking.teacher ? booking.teacher.name : 'Anda';
-      const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
-      appState.activeMap.setUstaz({ lat: userLoc.lat, lng: userLoc.lng, avatar: avatar, name: name });
-      // Force sync the DOM name in case it crashed earlier during initJourneyMap
-      if (!isPartner) {
-        const nameEl = document.getElementById('active-job-teacher-name');
-        if (nameEl && booking.teacher) nameEl.textContent = booking.teacher.name;
-      }
-    }
     
     try {
       const res = await fetch('/api/bookings/update-status', {
@@ -1490,21 +1517,49 @@ function recoverActiveBooking() {
   const booking = appState.currentBooking;
   if (!booking) return;
 
-  if (booking.isDualSimulation) {
-    // Dual simulation active.
-    // If the booking is still pending acceptance, trigger incoming job screen in partner mode
+  const isPartner = appState.currentUser && appState.currentUser.role === 'partner';
+
+  if (booking.isDualSimulation && !isPartner) {
     if (booking.status === 'matching') {
       navigateTo('home-view');
       triggerPartnerIncomingJobPing();
     } else {
-      // User is tracking their partner job
       navigateTo('active-job-view');
     }
   } else {
-    // Normal session
+    // Normal session recovery
     navigateTo('active-job-view');
-    if (booking.status === 'accepted') {
-      startTrackingTeacherLocation();
+    
+    if (isPartner) {
+      // Re-setup partner driver UI
+      document.getElementById('active-job-status-badge').innerHTML = '<i class="ri-navigation-line"></i> Anda Sedang Menavigasi Ke Lokasi Pelajar';
+      document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Pelajar';
+      document.getElementById('active-job-teacher-avatar').textContent = '🧑‍🎓';
+      document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
+      document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
+      document.getElementById('active-job-eta').textContent = 'Mengesan lokasi GPS...';
+
+      if (booking.status === 'accepted') {
+        setTimeout(async () => {
+          const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+          const map = new AgamaKuMap('mapContainer', userLoc);
+          appState.activeMap = map;
+          
+          let startCoord = DEFAULT_USER_LOCATION;
+          const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
+          if (teacherData && teacherData.coordinates) startCoord = teacherData.coordinates;
+          
+          map.setUstaz({ lat: startCoord.lat, lng: startCoord.lng, avatar: '👳‍♂️', name: 'Anda' });
+          try { await map.drawRoute(startCoord, userLoc); } catch (e) {}
+          
+          startDriverGPSTracking(booking.id, userLoc);
+        }, 100);
+      }
+    } else {
+      // Student tracking UI
+      if (booking.status === 'accepted') {
+        startTrackingTeacherLocation();
+      }
     }
   }
 }
@@ -1901,11 +1956,157 @@ function navigateToPartnerDashboard() {
 
   // Redirect
   navigateTo('partner-home-view');
+  
+  // Refresh real stats from database
+  updatePartnerDashboardStats();
 }
 
 // ----------------------------------------------------
 // Ustaz / Partner Dashboard Operations
 // ----------------------------------------------------
+
+// --- Teacher Settings Modal ---
+function openTeacherSettingsModal() {
+  const teacherId = appState.currentUser ? appState.currentUser.teacher_id : null;
+  if (!teacherId) {
+    showToast('Tiada profil guru dijumpai.', false);
+    return;
+  }
+
+  const teacher = appState.teachersList.find(t => t.id === teacherId);
+  if (teacher) {
+    document.getElementById('settings-hourly-rate').value = teacher.hourlyRate || 35;
+    document.getElementById('settings-phone').value = teacher.phone || '';
+    document.getElementById('settings-bio').value = teacher.bio || '';
+  }
+
+  document.getElementById('teacher-settings-modal').style.display = 'flex';
+}
+
+function closeTeacherSettingsModal() {
+  document.getElementById('teacher-settings-modal').style.display = 'none';
+}
+
+async function saveTeacherSettings() {
+  const teacherId = appState.currentUser ? appState.currentUser.teacher_id : null;
+  if (!teacherId) return;
+
+  const hourlyRate = parseFloat(document.getElementById('settings-hourly-rate').value) || 35;
+  const phone = document.getElementById('settings-phone').value.trim();
+  const bio = document.getElementById('settings-bio').value.trim();
+
+  try {
+    const res = await fetch('/api/teachers/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacherId, hourlyRate, phone, bio })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Tetapan berjaya disimpan!', true);
+      closeTeacherSettingsModal();
+
+      // Refresh teacher list to reflect changes
+      const teachersRes = await fetch('/api/teachers');
+      if (teachersRes.ok) {
+        appState.teachersList = await teachersRes.json();
+      }
+    } else {
+      showToast(data.message || 'Gagal menyimpan tetapan.', false);
+    }
+  } catch (e) {
+    console.error('Error saving settings:', e);
+    showToast('Ralat rangkaian semasa menyimpan tetapan.', false);
+  }
+}
+
+// --- Certification Info Modal ---
+function openCertificationModal() {
+  const teacherId = appState.currentUser ? appState.currentUser.teacher_id : null;
+  if (!teacherId) {
+    showToast('Tiada profil guru dijumpai.', false);
+    return;
+  }
+
+  const teacher = appState.teachersList.find(t => t.id === teacherId);
+  if (teacher) {
+    document.getElementById('cert-name').textContent = teacher.name;
+    document.getElementById('cert-teacher-id').textContent = teacher.id;
+    document.getElementById('cert-verified-status').textContent = teacher.verified ? '✅ Disahkan' : '⏳ Belum Disahkan';
+    document.getElementById('cert-verified-status').style.color = teacher.verified ? 'var(--color-primary-light)' : 'var(--color-gold)';
+    document.getElementById('cert-rating').textContent = `⭐ ${teacher.rating.toFixed(1)}`;
+    document.getElementById('cert-reviews').textContent = teacher.reviewsCount || 0;
+    document.getElementById('cert-status-text').textContent = teacher.verified ? 'Tauliah Aktif' : 'Menunggu Pengesahan';
+    document.getElementById('cert-details-text').textContent = teacher.verified ? 'Profil anda telah disahkan oleh JAWI/JAKIM' : 'Permohonan anda sedang dalam proses semakan';
+  }
+
+  document.getElementById('certification-modal').style.display = 'flex';
+}
+
+function closeCertificationModal() {
+  document.getElementById('certification-modal').style.display = 'none';
+}
+
+// --- Real Stats from Database ---
+async function updatePartnerDashboardStats() {
+  if (!appState.currentUser || !appState.currentUser.teacher_id) return;
+  const teacherId = appState.currentUser.teacher_id;
+
+  try {
+    // Fetch completed bookings for this teacher
+    const res = await fetch(`/api/bookings?teacherId=${teacherId}`);
+    if (!res.ok) return;
+    const bookings = await res.json();
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    let earningsToday = 0;
+    let earningsWeek = 0;
+    let jobsToday = 0;
+    let jobsWeek = 0;
+
+    bookings.forEach(b => {
+      if (b.status === 'completed') {
+        const bookingDate = new Date(b.createdAt);
+        const bookingDateStr = bookingDate.toISOString().split('T')[0];
+
+        if (bookingDateStr === todayStr) {
+          earningsToday += b.totalPrice;
+          jobsToday++;
+        }
+        if (bookingDate >= weekAgo) {
+          earningsWeek += b.totalPrice;
+          jobsWeek++;
+        }
+      }
+    });
+
+    // Update the dashboard UI
+    document.getElementById('partner-stats-today').textContent = `RM ${earningsToday.toFixed(2)}`;
+    document.getElementById('partner-stats-today-sub').textContent = `${jobsToday} tugasan siap`;
+    document.getElementById('partner-stats-week').textContent = `RM ${earningsWeek.toFixed(2)}`;
+    document.getElementById('partner-stats-week-sub').textContent = `${jobsWeek} tugasan siap`;
+
+    // Update review stats
+    const teacher = appState.teachersList.find(t => t.id === teacherId);
+    if (teacher) {
+      document.getElementById('partner-rating-val').textContent = `⭐ ${teacher.rating.toFixed(1)}`;
+      document.getElementById('partner-tier-val').textContent = `${teacher.reviewsCount || 0}`;
+      document.getElementById('partner-rating-count').textContent = `Dari ${teacher.reviewsCount || 0} maklum balas`;
+    }
+
+    // Update partner state
+    if (appState.partnerUser) {
+      appState.partnerUser.earningsToday = earningsToday;
+      appState.partnerUser.earningsWeek = earningsWeek;
+      appState.partnerUser.completedJobs = jobsWeek;
+    }
+  } catch (e) {
+    console.warn('Could not fetch partner stats:', e);
+  }
+}
 function togglePartnerAvailability() {
   appState.partnerUser.online = !appState.partnerUser.online;
   DB.set('profile_partner', appState.partnerUser);

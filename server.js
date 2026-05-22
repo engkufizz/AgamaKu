@@ -314,6 +314,31 @@ const server = http.createServer(async (req, res) => {
         return jsonResponse(res, 200, { success: true });
       }
 
+      // 3c. UPDATE TEACHER PROFILE (Rate, Bio, Phone)
+      if (parsedUrl === '/api/teachers/update' && req.method === 'POST') {
+        const body = await readJsonBody(req);
+        if (!body || !body.teacherId) {
+          return jsonResponse(res, 400, { success: false, message: 'Maklumat tidak lengkap.' });
+        }
+
+        const updates = [];
+        const params = [];
+        if (body.hourlyRate !== undefined) { updates.push('hourlyRate = ?'); params.push(parseFloat(body.hourlyRate)); }
+        if (body.bio !== undefined) { updates.push('bio = ?'); params.push(body.bio); }
+        if (body.phone !== undefined) { updates.push('phone = ?'); params.push(body.phone); }
+        if (body.specialties !== undefined) { updates.push('specialties = ?'); params.push(body.specialties); }
+
+        if (updates.length === 0) {
+          return jsonResponse(res, 400, { success: false, message: 'Tiada maklumat untuk dikemas kini.' });
+        }
+
+        params.push(body.teacherId);
+        await dbRun(`UPDATE teachers SET ${updates.join(', ')} WHERE id = ?`, params);
+
+        const updatedTeacher = await dbGet('SELECT * FROM teachers WHERE id = ?', [body.teacherId]);
+        return jsonResponse(res, 200, { success: true, teacher: updatedTeacher });
+      }
+
       // 4. GET REVIEWS
       if (parsedUrl === '/api/reviews' && req.method === 'GET') {
         const reviews = await dbAll('SELECT * FROM reviews');
@@ -474,8 +499,9 @@ const server = http.createServer(async (req, res) => {
           return jsonResponse(res, 404, { success: false, message: 'Pengguna tidak dijumpai.' });
         }
 
-        // Delete associated teacher profile if exists
+        // Delete associated teacher profile and their reviews if exists
         if (user.teacher_id) {
+          await dbRun('DELETE FROM reviews WHERE teacherId = ?', [user.teacher_id]);
           await dbRun('DELETE FROM teachers WHERE id = ?', [user.teacher_id]);
         }
 
