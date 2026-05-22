@@ -653,6 +653,7 @@ function startPollingActiveBookings() {
                 playSuccessChime();
                 showToast(`Berjaya dipadankan dengan ${appState.currentBooking.teacher.name}!`);
                 navigateTo('active-job-view');
+                updateJourneyUIStates();
                 startTrackingTeacherLocation();
               } else if (newStatus === 'arrived') {
                 playSuccessChime();
@@ -1231,18 +1232,6 @@ function updateJourneyUIStates() {
     skipBtn.style.display = 'flex';
     skipBtn.textContent = 'Mulakan Kelas';
     timerBox.style.display = 'none';
-
-    // Force synchronize the map marker to the destination on both devices
-    if (typeof stopDriverGPSTracking === 'function') stopDriverGPSTracking();
-    if (typeof stopTrackingTeacherLocation === 'function') stopTrackingTeacherLocation();
-    
-    if (appState.activeMap) {
-      appState.activeMap.stopSearching();
-      const avatar = isPartner ? '👳‍♂️' : (booking.teacher ? booking.teacher.avatar : '👨‍🏫');
-      const name = isPartner ? 'Anda' : (booking.teacher ? booking.teacher.name : 'Ustaz');
-      const destLoc = appState.userLocation || DEFAULT_USER_LOCATION;
-      appState.activeMap.setUstaz({ lat: destLoc.lat, lng: destLoc.lng, avatar: avatar, name: name });
-    }
   } else if (booking.status === 'started') {
     badge.innerHTML = '<i class="ri-book-open-fill"></i> Sesi Kelas Berjalan';
     badge.className = 'status-badge-live';
@@ -1254,6 +1243,21 @@ function updateJourneyUIStates() {
     skipBtn.textContent = 'Selesaikan Kelas';
     timerBox.style.display = 'flex';
     startClassDurationTimer();
+  }
+
+  // Ensure map is synced and GPS is stopped if arrived or started
+  if (booking.status === 'arrived' || booking.status === 'started') {
+    if (typeof stopDriverGPSTracking === 'function') stopDriverGPSTracking();
+    if (typeof stopTrackingTeacherLocation === 'function') stopTrackingTeacherLocation();
+    
+    if (appState.activeMap) {
+      appState.activeMap.stopSearching();
+      const avatar = isPartner ? '👳‍♂️' : (booking.teacher ? booking.teacher.avatar : '👨‍🏫');
+      const name = isPartner ? 'Anda' : (booking.teacher ? booking.teacher.name : 'Ustaz');
+      const destLoc = appState.userLocation || DEFAULT_USER_LOCATION;
+      appState.activeMap.setUstaz({ lat: destLoc.lat, lng: destLoc.lng, avatar: avatar, name: name });
+      if (appState.activeMap.stopJourneyAnimation) appState.activeMap.stopJourneyAnimation();
+    }
   }
 }
 
