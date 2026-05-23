@@ -310,13 +310,25 @@ const server = http.createServer(async (req, res) => {
         return jsonResponse(res, 200, formattedTeachers);
       }
 
-      // 3b. UPDATE TEACHER ONLINE STATUS
+      // 3b. UPDATE TEACHER ONLINE STATUS AND LIVE GPS LOCATION
       if (parsedUrl === '/api/teachers/status' && req.method === 'POST') {
         const body = await readJsonBody(req);
         if (!body || !body.teacherId || body.online === undefined) {
           return jsonResponse(res, 400, { success: false, message: 'Maklumat tidak lengkap.' });
         }
-        await dbRun('UPDATE teachers SET online = ? WHERE id = ?', [body.online ? 1 : 0, body.teacherId]);
+        
+        let query = 'UPDATE teachers SET online = ?';
+        let params = [body.online ? 1 : 0];
+        
+        if (body.lat !== undefined && body.lng !== undefined) {
+          query += ', coordinates = ?';
+          params.push(JSON.stringify({ lat: body.lat, lng: body.lng }));
+        }
+        
+        query += ' WHERE id = ?';
+        params.push(body.teacherId);
+        
+        await dbRun(query, params);
         return jsonResponse(res, 200, { success: true });
       }
 

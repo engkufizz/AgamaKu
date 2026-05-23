@@ -85,6 +85,21 @@ async function fetchUserLocation() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude
         };
+        
+        // Auto-sync live GPS to backend if the user is an online partner
+        if (appState.currentUser && appState.currentUser.teacher_id && appState.partnerUser && appState.partnerUser.online) {
+          fetch('/api/teachers/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              teacherId: appState.currentUser.teacher_id,
+              online: true,
+              lat: appState.userLocation.lat,
+              lng: appState.userLocation.lng
+            })
+          }).catch(() => {});
+        }
+
         if (!resolved) {
           resolved = true;
           resolve();
@@ -1986,13 +2001,19 @@ function navigateToUserDashboard() {
   document.getElementById('partner-online-status-lbl').className = 'partner-status-status';
 
   if (appState.currentUser && appState.currentUser.teacher_id) {
+    const payload = {
+      teacherId: appState.currentUser.teacher_id,
+      online: false
+    };
+    if (appState.userLocation) {
+      payload.lat = appState.userLocation.lat;
+      payload.lng = appState.userLocation.lng;
+    }
+    
     fetch('/api/teachers/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        teacherId: appState.currentUser.teacher_id,
-        online: false
-      })
+      body: JSON.stringify(payload)
     }).catch(err => console.error('Error updating online status:', err));
   }
   
@@ -2170,13 +2191,19 @@ function togglePartnerAvailability() {
   DB.set('profile_partner', appState.partnerUser);
 
   if (appState.currentUser && appState.currentUser.teacher_id) {
+    const payload = {
+      teacherId: appState.currentUser.teacher_id,
+      online: appState.partnerUser.online
+    };
+    if (appState.userLocation) {
+      payload.lat = appState.userLocation.lat;
+      payload.lng = appState.userLocation.lng;
+    }
+
     fetch('/api/teachers/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        teacherId: appState.currentUser.teacher_id,
-        online: appState.partnerUser.online
-      })
+      body: JSON.stringify(payload)
     }).catch(err => console.error('Error updating online status:', err));
   }
 
