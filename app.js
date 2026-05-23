@@ -1282,7 +1282,7 @@ function updateJourneyUIStates() {
     badge.className = 'status-badge-live';
     eta.style.display = 'block';
     skipBtn.style.display = 'flex';
-    skipBtn.textContent = isPartner ? 'Skip Perjalanan (Driver)' : 'Lajukan Perjalanan';
+    skipBtn.textContent = 'Skip Perjalanan';
     timerBox.style.display = 'none';
   } else if (booking.status === 'arrived') {
     badge.innerHTML = isPartner ? '<i class="ri-map-pin-user-fill"></i> Anda Telah Tiba di Lokasi' : '<i class="ri-map-pin-user-fill"></i> Ustaz Sudah Sampai!';
@@ -1371,6 +1371,9 @@ function startTrackingTeacherLocation() {
           const distMeters = appState.activeMap.getDistanceMeters(driverLat, driverLng, userLoc.lat, userLoc.lng);
           const etaMins = Math.max(1, Math.ceil(distMeters / (30000 / 60))); // 30 km/h -> meters per minute
           document.getElementById('active-job-eta').textContent = `ETA: ${etaMins} min`;
+          
+          // Redraw the yellow route line to stay connected to the moving Ustaz (without snapping bounds)
+          try { appState.activeMap.drawRoute({lat: driverLat, lng: driverLng}, userLoc, false); } catch(e){}
         }
       }
     } catch (e) {
@@ -2302,7 +2305,7 @@ async function acceptIncomingJob() {
       document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Pelajar';
       document.getElementById('active-job-teacher-avatar').textContent = '🧑‍🎓';
       document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
-      document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
+      document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan';
       document.getElementById('active-job-eta').textContent = 'Mengesan lokasi GPS...';
       document.getElementById('class-timer-box').style.display = 'none';
       stopClassDurationTimer();
@@ -2331,7 +2334,7 @@ async function acceptIncomingJob() {
         map.setUstaz({
           lat: startCoord.lat,
           lng: startCoord.lng,
-          avatar: '👳‍♂️',
+          avatar: appState.currentUser.gender === 'P' ? '🧕' : '👳‍♂️',
           name: 'Anda'
         });
 
@@ -2394,6 +2397,11 @@ function startDriverGPSTracking(bookingId, destinationLatLng) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookingId, lat: driverLat, lng: driverLng })
         }).catch(e => console.warn('Failed to send GPS location:', e));
+
+        // Redraw route from new driver GPS to destination (throttle to avoid API spam, no fitBounds)
+        if (appState.activeMap && appState.activeView === 'active-job-view') {
+          try { appState.activeMap.drawRoute({lat: driverLat, lng: driverLng}, destinationLatLng, false); } catch(e){}
+        }
       }
     },
     (error) => {

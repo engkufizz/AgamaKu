@@ -241,7 +241,7 @@ class AgamaKuMap {
   }
 
   // Draw a static route polyline on the map (no marker animation)
-  async drawRoute(startLatLng, endLatLng) {
+  async drawRoute(startLatLng, endLatLng, fitBounds = true) {
     let routeCoords = [];
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${startLatLng.lng},${startLatLng.lat};${endLatLng.lng},${endLatLng.lat}?geometries=geojson&steps=false`;
@@ -268,7 +268,9 @@ class AgamaKuMap {
       dashArray: '10, 8'
     }).addTo(this.map);
 
-    this.map.fitBounds(this.routeLine.getBounds(), { padding: [50, 50] });
+    if (fitBounds) {
+      this.map.fitBounds(this.routeLine.getBounds(), { padding: [50, 50] });
+    }
     return routeCoords;
   }
 
