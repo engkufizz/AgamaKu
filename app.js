@@ -1660,10 +1660,9 @@ function openChatRoom() {
   }
 
   // Header configs
-  if (booking.isDualSimulation) {
-    // We are simulating user chatting to client
-    document.getElementById('chat-teacher-name').textContent = appState.currentUser.role === 'partner' ? booking.clientName : 'Ustaz Zulkifli';
-    document.getElementById('chat-teacher-avatar').textContent = appState.currentUser.role === 'partner' ? '🧑' : '👳‍♂️';
+  if (appState.currentUser.role === 'partner') {
+    document.getElementById('chat-teacher-name').textContent = booking.clientName || 'Pelajar';
+    document.getElementById('chat-teacher-avatar').textContent = '🧑';
   } else {
     document.getElementById('chat-teacher-name').textContent = booking.teacher.name;
     document.getElementById('chat-teacher-avatar').textContent = booking.teacher.avatar;
