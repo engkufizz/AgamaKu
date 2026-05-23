@@ -816,9 +816,11 @@ function renderFeaturedTeachers() {
 
   const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
 
-  // Calculate distances and sort
-  const teachersWithDistance = appState.teachersList.map(t => {
-    let dist = 0;
+  // Calculate distances and sort (only for ONLINE teachers)
+  const teachersWithDistance = appState.teachersList
+    .filter(t => t.online)
+    .map(t => {
+      let dist = 0;
     if (t.coordinates && t.coordinates.lat) {
       dist = calculateDistanceKm(userLoc.lat, userLoc.lng, t.coordinates.lat, t.coordinates.lng);
     }
@@ -2447,7 +2449,8 @@ function openCategoryTeachers(categoryId) {
   const filterBadgeEl = document.getElementById('teachers-list-filter-badge');
   const viewTitleEl = document.getElementById('teachers-list-title');
 
-  let filteredTeachers = appState.teachersList;
+  // Only show online teachers in the directory
+  let filteredTeachers = appState.teachersList.filter(t => t.online);
 
   if (categoryId === 'all' || !category) {
     viewTitleEl.textContent = 'Direktori Guru';
@@ -2460,7 +2463,7 @@ function openCategoryTeachers(categoryId) {
         <button onclick="openCategoryTeachers('all')"><i class="ri-close-circle-fill"></i></button>
       </div>
     `;
-    filteredTeachers = appState.teachersList.filter(t => t.specialties.includes(categoryId));
+    filteredTeachers = appState.teachersList.filter(t => t.specialties.includes(categoryId) && t.online);
   }
 
   if (filteredTeachers.length === 0) {
