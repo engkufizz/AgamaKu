@@ -68,7 +68,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
 
-// Fetch user location
+// Fetch user location continuously to ensure high accuracy for students
 async function fetchUserLocation() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
@@ -77,20 +77,28 @@ async function fetchUserLocation() {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    let resolved = false;
+
+    navigator.geolocation.watchPosition(
       (pos) => {
         appState.userLocation = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude
         };
-        resolve();
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
       },
       (err) => {
         console.warn('Geolocation failed/denied, using default KL Sentral location.', err);
-        appState.userLocation = DEFAULT_USER_LOCATION;
-        resolve();
+        if (!resolved) {
+          appState.userLocation = DEFAULT_USER_LOCATION;
+          resolved = true;
+          resolve();
+        }
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
 }
