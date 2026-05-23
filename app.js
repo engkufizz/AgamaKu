@@ -619,7 +619,7 @@ function startPollingActiveBookings() {
                   clientName: appState.currentBooking.clientName || 'Pelajar',
                   datetime: appState.currentBooking.datetime,
                   duration: appState.currentBooking.hours,
-                  price: appState.currentBooking.price * 0.9,
+                  price: appState.currentBooking.price,
                   status: 'completed',
                   rated: false
                 };
@@ -627,20 +627,22 @@ function startPollingActiveBookings() {
                 DB.set('history_list', appState.historyList);
                 renderHistoryList();
                 
-                // Fetch the latest wallet balance from DB
-                const userRes = await fetch('/api/auth/login', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ username: appState.currentUser.username, password: 'simulated_dummy_for_wallet_sync_skip' })
-                });
-                
-                // We'll just rely on a manual balance fetch or let the user refresh, but for now we can fetch the user directly
-                // Wait, we can't easily fetch just the user without their password via API unless we create a /api/users/me endpoint.
-                // Let's just update the local balance optimistically
-                appState.currentUser.balance += (appState.currentBooking.price * 0.9);
-                appState.partnerUser.wallet = appState.currentUser.balance;
+                // Fetch the absolute latest user profile from DB to guarantee wallet is 100% accurate
+                try {
+                  const uRes = await fetch(`/api/users/${appState.currentUser.id}`);
+                  if (uRes.ok) {
+                    const uData = await uRes.json();
+                    if (uData.success) {
+                      appState.currentUser.balance = uData.user.balance;
+                      appState.partnerUser.wallet = uData.user.balance;
+                    }
+                  }
+                } catch (e) {}
+
                 localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
                 DB.set('profile_partner', appState.partnerUser);
+                
+                await updatePartnerDashboardStats();
                 updateUIWalletBalances();
                 
                 appState.currentBooking = null;
@@ -1505,13 +1507,22 @@ async function simulateActiveJobNextStep() {
 
       if (isPartner) {
         const earnings = booking.price; // 100% to Ustaz to match backend DB
-        appState.currentUser.balance = (appState.currentUser.balance || 0) + earnings;
-        localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
         
+        // Fetch the absolute latest user profile from DB to guarantee wallet is 100% accurate
+        try {
+          const uRes = await fetch(`/api/users/${appState.currentUser.id}`);
+          if (uRes.ok) {
+            const uData = await uRes.json();
+            if (uData.success) {
+              appState.currentUser.balance = uData.user.balance;
+            }
+          }
+        } catch (e) {
+          appState.currentUser.balance = (appState.currentUser.balance || 0) + earnings;
+        }
+
         appState.partnerUser.wallet = appState.currentUser.balance;
-        appState.partnerUser.earningsToday += earnings;
-        appState.partnerUser.earningsWeek += earnings;
-        appState.partnerUser.completedJobs += 1;
+        localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
         
         // Save to history list
         const newHistoryItem = {
@@ -1529,6 +1540,8 @@ async function simulateActiveJobNextStep() {
         appState.historyList.unshift(newHistoryItem);
         DB.set('history_list', appState.historyList);
         renderHistoryList();
+        
+        await updatePartnerDashboardStats();
         updateUIWalletBalances();
 
         // Clear active booking
