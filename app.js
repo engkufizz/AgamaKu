@@ -108,6 +108,23 @@ async function initApp() {
         fetchUserLocation()
       ]);
 
+      // Fetch fresh user profile from backend to ensure wallet sync
+      try {
+        const userRes = await fetch(`/api/users/${appState.currentUser.id}`);
+        const userData = await userRes.json();
+        if (userData.success && userData.user) {
+          appState.currentUser = userData.user;
+          localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+        } else if (userRes.status === 404 && userData.message === 'Pengguna tidak dijumpai.') {
+          // User was deleted from DB, clear local session
+          localStorage.removeItem('agamaku_user');
+          location.reload();
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not sync user profile', e);
+      }
+
       document.getElementById('home-user-name').textContent = appState.currentUser.fullname;
       updateUserProfileUI();
 
@@ -477,6 +494,8 @@ async function deleteUserAccount() {
         // Clear everything locally
         localStorage.removeItem('agamaku_user');
         DB.set('profile_user', null);
+        DB.set('profile_partner', null);
+        DB.set('history_list', null);
         if (appState.pollingInterval) clearInterval(appState.pollingInterval);
         appState.pollingInterval = null;
         appState.currentUser = null;
@@ -682,6 +701,12 @@ function startPollingActiveBookings() {
                 appState.historyList.unshift(newHistoryItem);
                 DB.set('history_list', appState.historyList);
                 renderHistoryList();
+                
+                // Sync student wallet balance locally
+                if (appState.currentUser && typeof appState.currentUser.balance === 'number') {
+                  appState.currentUser.balance -= appState.currentBooking.price;
+                  localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+                }
                 updateUIWalletBalances();
 
                 // Setup review view fields
@@ -1172,42 +1197,66 @@ async function cancelBookingSearch() {
 // ----------------------------------------------------
 function initJourneyMap() {
   if (!appState.currentBooking || !appState.currentBooking.teacher) return;
-  const teacher = appState.currentBooking.teacher;
+  const booking = appState.currentBooking;
+  const teacher = booking.teacher;
+  const isPartner = appState.currentUser && appState.currentUser.role === 'partner';
 
-  // Initialize leaflet map
-  const userLoc = appState.userLocation || DEFAULT_USER_LOCATION;
-  const map = new AgamaKuMap('mapContainer', userLoc);
-  appState.activeMap = map;
-
-  // Safely extract coordinates, falling back to x/y mapping or default KL coordinates if undefined
-  let lat = teacher.coordinates ? teacher.coordinates.lat : undefined;
-  let lng = teacher.coordinates ? teacher.coordinates.lng : undefined;
-  if (lat === undefined && teacher.coordinates && teacher.coordinates.x !== undefined) {
-    lat = 3.1 + (teacher.coordinates.y * 0.1);
-    lng = 101.6 + (teacher.coordinates.x * 0.2);
-  }
-  if (lat === undefined) {
-    lat = 3.1340;
-    lng = 101.6866;
-  }
-
-  // Set initial coordinates of matched teacher
-  try {
-    map.setUstaz({
-      lat: lat,
-      lng: lng,
-      avatar: teacher.avatar,
-      name: teacher.name
-    });
-  } catch (e) {
-    console.error("Leaflet marker initialization error safely caught.", e);
-  }
+  let mapCenter = appState.userLocation || DEFAULT_USER_LOCATION;
   
-  // Bind floating details values (safeguarded so it always runs)
-  document.getElementById('active-job-teacher-name').textContent = teacher.name;
-  document.getElementById('active-job-teacher-avatar').textContent = teacher.avatar;
-  document.getElementById('active-job-teacher-phone').textContent = teacher.phone;
-  document.getElementById('active-job-header-title').textContent = appState.currentBooking.serviceName;
+  if (isPartner) {
+    const destLoc = (booking.studentLat && booking.studentLng) 
+            ? { lat: booking.studentLat, lng: booking.studentLng } 
+            : DEFAULT_USER_LOCATION;
+    mapCenter = destLoc;
+    
+    const map = new AgamaKuMap('mapContainer', mapCenter);
+    appState.activeMap = map;
+
+    let startCoord = appState.userLocation;
+    if (!startCoord) {
+      startCoord = teacher.coordinates ? teacher.coordinates : { lat: 3.1340, lng: 101.6866 };
+    }
+
+    try {
+      const driverAvatar = appState.currentUser.gender === 'P' ? '🧕' : '👳‍♂️';
+      map.setUstaz({ lat: startCoord.lat, lng: startCoord.lng, avatar: driverAvatar, name: 'Anda' });
+    } catch (e) {}
+    
+    if (booking.status === 'accepted') {
+      setTimeout(async () => {
+        try { await map.drawRoute(startCoord, destLoc); } catch (e) {}
+        startDriverGPSTracking(booking.id, destLoc);
+      }, 100);
+    }
+    
+    document.getElementById('active-job-teacher-name').textContent = booking.clientName || 'Pelajar';
+    document.getElementById('active-job-teacher-avatar').textContent = '🧑‍🎓';
+    document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
+    document.getElementById('active-job-header-title').textContent = booking.serviceName;
+
+  } else {
+    let lat = teacher.coordinates ? teacher.coordinates.lat : undefined;
+    let lng = teacher.coordinates ? teacher.coordinates.lng : undefined;
+    if (lat === undefined && teacher.coordinates && teacher.coordinates.x !== undefined) {
+      lat = 3.1 + (teacher.coordinates.y * 0.1);
+      lng = 101.6 + (teacher.coordinates.x * 0.2);
+    }
+    if (lat === undefined) { lat = 3.1340; lng = 101.6866; }
+
+    const map = new AgamaKuMap('mapContainer', mapCenter);
+    appState.activeMap = map;
+
+    try {
+      map.setUstaz({ lat: lat, lng: lng, avatar: teacher.avatar, name: teacher.name });
+    } catch (e) {
+      console.error("Leaflet marker initialization error safely caught.", e);
+    }
+    
+    document.getElementById('active-job-teacher-name').textContent = teacher.name;
+    document.getElementById('active-job-teacher-avatar').textContent = teacher.avatar;
+    document.getElementById('active-job-teacher-phone').textContent = teacher.phone;
+    document.getElementById('active-job-header-title').textContent = booking.serviceName;
+  }
 
   updateJourneyUIStates();
 }
@@ -1418,7 +1467,7 @@ async function simulateActiveJobNextStep() {
       }
 
       // Update current user balance from response
-      if (data.user) {
+      if (data.user && !isPartner) {
         appState.currentUser.balance = data.user.balance;
         localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
       }
@@ -1427,7 +1476,10 @@ async function simulateActiveJobNextStep() {
       await loadDatabaseData();
 
       if (isPartner) {
-        const earnings = booking.price * 0.9; // 90% of price
+        const earnings = booking.price; // 100% to Ustaz to match backend DB
+        appState.currentUser.balance = (appState.currentUser.balance || 0) + earnings;
+        localStorage.setItem('agamaku_user', JSON.stringify(appState.currentUser));
+        
         appState.partnerUser.wallet = appState.currentUser.balance;
         appState.partnerUser.earningsToday += earnings;
         appState.partnerUser.earningsWeek += earnings;
@@ -1547,32 +1599,6 @@ function recoverActiveBooking() {
       document.getElementById('active-job-teacher-phone').textContent = 'No. Telefon: +60 18-333 4455';
       document.getElementById('simulation-skip-btn').textContent = 'Skip Perjalanan (Driver)';
       document.getElementById('active-job-eta').textContent = 'Mengesan lokasi GPS...';
-
-      if (booking.status === 'accepted') {
-        setTimeout(async () => {
-          const destLoc = (booking.studentLat && booking.studentLng) 
-            ? { lat: booking.studentLat, lng: booking.studentLng } 
-            : DEFAULT_USER_LOCATION;
-            
-          const map = new AgamaKuMap('mapContainer', destLoc);
-          appState.activeMap = map;
-          
-          let startCoord = appState.userLocation;
-          if (!startCoord) {
-            const teacherData = appState.teachersList.find(t => t.id === appState.currentUser.teacher_id);
-            if (teacherData && teacherData.coordinates) {
-              startCoord = teacherData.coordinates;
-            } else {
-              startCoord = DEFAULT_USER_LOCATION;
-            }
-          }
-          
-          map.setUstaz({ lat: startCoord.lat, lng: startCoord.lng, avatar: '👳‍♂️', name: 'Anda' });
-          try { await map.drawRoute(startCoord, destLoc); } catch (e) {}
-          
-          startDriverGPSTracking(booking.id, destLoc);
-        }, 100);
-      }
     } else {
       // Student tracking UI
       if (booking.status === 'accepted') {
@@ -1977,6 +2003,7 @@ function navigateToPartnerDashboard() {
   
   // Refresh real stats from database
   updatePartnerDashboardStats();
+  updateUIWalletBalances();
 }
 
 // ----------------------------------------------------

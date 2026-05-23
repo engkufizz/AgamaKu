@@ -247,7 +247,7 @@ const server = http.createServer(async (req, res) => {
         await dbRun(`
           INSERT INTO users (username, password, fullname, role, gender, balance, teacher_id)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [body.username.toLowerCase(), hashedPassword, body.fullname, body.role, body.gender, body.role === 'user' ? 150.0 : 0.0, teacherId]);
+        `, [body.username.toLowerCase(), hashedPassword, body.fullname, body.role, body.gender, 0.0, teacherId]);
 
         const newUser = await dbGet('SELECT id, username, fullname, role, gender, balance, teacher_id FROM users WHERE username = ?', [body.username.toLowerCase()]);
         return jsonResponse(res, 201, { success: true, user: newUser });
@@ -491,6 +491,15 @@ const server = http.createServer(async (req, res) => {
         return jsonResponse(res, 200, { success: true, user: updatedUser });
       }
 
+      // 8b. GET USER PROFILE
+      if (parsedUrl.startsWith('/api/users/') && req.method === 'GET') {
+        const userId = parsedUrl.split('/api/users/')[1];
+        if (!userId) return jsonResponse(res, 400, { success: false, message: 'Sila sertakan userId.' });
+        const user = await dbGet('SELECT id, username, fullname, role, gender, balance, teacher_id FROM users WHERE id = ?', [userId]);
+        if (!user) return jsonResponse(res, 404, { success: false, message: 'Pengguna tidak dijumpai.' });
+        return jsonResponse(res, 200, { success: true, user: user });
+      }
+
       // 9. DELETE USER ACCOUNT
       if (parsedUrl.startsWith('/api/users/') && req.method === 'DELETE') {
         const userIdStr = parsedUrl.split('/').pop();
@@ -508,8 +517,17 @@ const server = http.createServer(async (req, res) => {
         // Delete associated teacher profile and their reviews if exists
         if (user.teacher_id) {
           await dbRun('DELETE FROM reviews WHERE teacherId = ?', [user.teacher_id]);
+          
+          // Delete tracking locations for this teacher's bookings
+          await dbRun('DELETE FROM locations WHERE bookingId IN (SELECT id FROM bookings WHERE teacherId = ?)', [user.teacher_id]);
+          await dbRun('DELETE FROM bookings WHERE teacherId = ?', [user.teacher_id]);
+          
           await dbRun('DELETE FROM teachers WHERE id = ?', [user.teacher_id]);
         }
+
+        // Delete tracking locations for this student's bookings
+        await dbRun('DELETE FROM locations WHERE bookingId IN (SELECT id FROM bookings WHERE userId = ?)', [userId]);
+        await dbRun('DELETE FROM bookings WHERE userId = ?', [userId]);
 
         // Delete the user
         await dbRun('DELETE FROM users WHERE id = ?', [userId]);
